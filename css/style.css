@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --asphalt: #14181F;
+  --asphalt-2: #1E242F;
+  --track: #F4F1EA;
+  --line: #2C3644;
+  --gold: #FFC53D;
+  --coral: #FF5D5D;
+  --blue: #3D8BFF;
+  --teal: #2FE0B0;
+  --ink-soft: #8891A3;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --radius: 16px;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; min-height: 100%;
+  background: radial-gradient(circle at 50% -10%, #232B38, var(--asphalt) 55%);
+  color: var(--track);
+  font-family: var(--font-body);
+}
+a { color: inherit; }
+button { cursor: pointer; border: none; font-family: var(--font-display); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+.app-shell { min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+.chrome-bar {
+  width: 100%; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-display);
+}
+.chrome-bar .brand { font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+.chrome-bar .brand .flag { color: var(--gold); }
+.chrome-bar .who { font-family: var(--font-body); font-size: 0.85rem; color: var(--ink-soft); }
+.stripe {
+  height: 3px; width: 100%; max-width: 640px;
+  background: repeating-linear-gradient(-45deg, var(--gold) 0 14px, transparent 14px 28px);
+  opacity: 0.8; border-radius: 4px; margin: 4px 0 4px;
+}
+
+.page { width: 100%; max-width: 640px; padding: 10px 18px 48px; display: flex; flex-direction: column; gap: 16px; }
+
+.panel {
+  background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+h1, h2, h3 { font-family: var(--font-display); margin: 0 0 6px; }
+h1 { font-size: 1.5rem; font-weight: 800; }
+h2 { font-size: 1.15rem; font-weight: 700; }
+p { line-height: 1.5; color: #B7BFCC; margin: 0; }
+.label { font-family: var(--font-body); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-soft); margin-bottom: 5px; }
+
+select, input[type="text"], input[type="password"] {
+  font-family: var(--font-body); font-size: 1rem; padding: 11px 13px; border-radius: 10px;
+  border: 2px solid var(--line); background: #0F1319; color: var(--track); width: 100%;
+}
+select:focus, input:focus { border-color: var(--teal); }
+
+.btn {
+  font-size: 1rem; font-weight: 700; padding: 13px 20px; border-radius: 10px;
+  color: #0F1319; background: var(--teal); box-shadow: 0 3px 0 rgba(0,0,0,0.3);
+}
+.btn:active { transform: translateY(2px); box-shadow: none; }
+.btn.gold { background: var(--gold); }
+.btn.coral { background: var(--coral); color: #fff; }
+.btn.blue { background: var(--blue); color: #fff; }
+.btn.ghost { background: transparent; color: var(--track); border: 2px solid var(--line); box-shadow: none; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.pill { display: inline-flex; font-family: var(--font-body); font-weight: 700; font-size: 0.78rem; padding: 4px 12px; border-radius: 999px; background: var(--gold); color: #0F1319; }
+
+.error-text { color: var(--coral); font-weight: 600; font-size: 0.88rem; }
+.hint-text { color: var(--ink-soft); font-size: 0.85rem; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+
+.game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.game-card {
+  background: var(--asphalt-2); border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+  display: flex; flex-direction: column; gap: 8px; text-align: center; text-decoration: none;
+  transition: transform 0.1s ease;
+}
+.game-card:active { transform: scale(0.97); }
+.game-card .emoji { font-size: 2rem; }
+.game-card .name { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; }
+
+@media (max-width: 480px) {
+  .page { padding: 10px 12px 40px; }
+  .panel { padding: 16px; }
+}

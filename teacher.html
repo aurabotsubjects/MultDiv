@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Times Tables Race — Teacher</title>
+<link rel="stylesheet" href="css/style.css" />
+<style>
+  .notif-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .notif-row:last-child { border-bottom: none; }
+  .notif-actions { display: flex; gap: 8px; }
+  .notif-actions .btn { padding: 8px 14px; font-size: 0.85rem; }
+  .row-inline { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row-inline > div { flex: 1; min-width: 140px; }
+  .mini-btn { padding: 4px 10px; font-size: 0.75rem; border-radius: 8px; background: var(--line); color: var(--track); font-family: var(--font-body); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="chrome-bar">
+    <div class="brand"><span class="flag">🏁</span> Teacher Dashboard</div>
+    <div class="who" id="whoBar"></div>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="page">
+    <div class="panel" id="loginPanel">
+      <h1>Teacher sign-in</h1>
+      <p>Use the email and password your admin set up for you.</p>
+      <div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+        <div><div class="label">Email</div><input type="text" id="email" /></div>
+        <div><div class="label">Password</div><input type="password" id="password" /></div>
+        <div id="loginError" class="error-text" style="display:none;"></div>
+        <button class="btn gold" id="loginBtn">Sign in</button>
+      </div>
+      <div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:8px;">
+        <p class="hint-text">New here? You'll need to request access first.</p>
+        <a href="teacher-signup.html" class="btn ghost" style="text-align:center; text-decoration:none;">Request a teacher account</a>
+      </div>
+    </div>
+
+    <div id="dashboard" style="display:none; flex-direction:column; gap:16px;">
+      <div class="panel">
+        <h2>Your classes</h2>
+        <div class="row-inline" style="margin-top:12px;">
+          <div>
+            <div class="label">Class</div>
+            <select id="classSelect"><option value="">Loading…</option></select>
+          </div>
+        </div>
+        <div class="row-inline" style="margin-top:12px;">
+          <div><div class="label">New class name</div><input type="text" id="newClassName" placeholder="e.g. Room 12" /></div>
+          <div><div class="label">Class code</div><input type="text" id="newClassCode" placeholder="e.g. ROOM12" /></div>
+          <button class="btn" id="addClassBtn">Add class</button>
+        </div>
+        <div id="classError" class="error-text" style="display:none; margin-top:8px;"></div>
+      </div>
+
+      <div class="panel" id="notifCard" style="display:none;">
+        <h2>🔔 Perfect scores waiting for approval</h2>
+        <div id="notifList"><p>No notifications yet.</p></div>
+      </div>
+
+      <div class="panel" id="rosterCard" style="display:none;">
+        <h2>Roster</h2>
+        <p class="hint-text">Class code: <strong id="classCodeDisplay"></strong> — students enter this to log in.</p>
+        <div class="row-inline" style="margin:14px 0;">
+          <div><div class="label">Student name</div><input type="text" id="newStudentName" /></div>
+          <div><div class="label">Password</div><input type="text" id="newStudentPassword" placeholder="min. 6 characters" /></div>
+          <button class="btn" id="addStudentBtn">Add student</button>
+        </div>
+        <div id="studentError" class="error-text" style="display:none; margin-bottom:8px;"></div>
+        <table>
+          <thead><tr><th>Name</th><th>Level</th><th></th></tr></thead>
+          <tbody id="rosterBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { teacherLogin, createClass, createStudentAccount, logout } from "./js/auth.js";
+import { listClassesForTeacher, listStudents, setStudentLevel, listenPendingNotifications, resolveNotification } from "./js/db.js";
+import { levelInfo, nextLevel } from "./js/levels.js";
+
+const loginPanel = document.getElementById("loginPanel");
+const dashboard = document.getElementById("dashboard");
+const whoBar = document.getElementById("whoBar");
+const classSelect = document.getElementById("classSelect");
+const notifCard = document.getElementById("notifCard");
+const rosterCard = document.getElementById("rosterCard");
+const rosterBody = document.getElementById("rosterBody");
+
+let teacherId = null;
+let classes = [];
+let currentClassId = null;
+let unsubscribeNotifs = null;
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const errEl = document.getElementById("loginError");
+  errEl.style.display = "none";
+  try {
+    const profile = await teacherLogin(email, password);
+    teacherId = profile.uid;
+    whoBar.innerHTML = `${profile.name} · <a href="#" id="logoutLink" style="text-decoration:underline;">Sign out</a>`;
+    document.getElementById("logoutLink").addEventListener("click", (e) => { e.preventDefault(); location.reload(); });
+    loginPanel.style.display = "none";
+    dashboard.style.display = "flex";
+    await loadClasses();
+  } catch (err) {
+    errEl.textContent = (err.message || "").includes("invalid-credential")
+      ? "That email and password combination isn't recognized — if you haven't requested an account yet, use the button below."
+      : (err.message || "Couldn't sign in.");
+    errEl.style.display = "block";
+  }
+});
+
+async function loadClasses() {
+  classes = await listClassesForTeacher(teacherId);
+  classSelect.innerHTML = classes.length
+    ? '<option value="">Select a class</option>' + classes.map(c => `<option value="${c.id}">${c.className}</option>`).join("")
+    : '<option value="">No classes yet — add one below</option>';
+}
+
+document.getElementById("addClassBtn").addEventListener("click", async () => {
+  const className = document.getElementById("newClassName").value.trim();
+  const classCode = document.getElementById("newClassCode").value.trim();
+  const errEl = document.getElementById("classError");
+  errEl.style.display = "none";
+  if (!className || !classCode) return;
+  try {
+    await createClass({ teacherId, className, classCode });
+    document.getElementById("newClassName").value = "";
+    document.getElementById("newClassCode").value = "";
+    await loadClasses();
+  } catch (err) {
+    errEl.textContent = err.message || "Couldn't create that class.";
+    errEl.style.display = "block";
+  }
+});
+
+classSelect.addEventListener("change", async () => {
+  currentClassId = classSelect.value;
+  if (unsubscribeNotifs) unsubscribeNotifs();
+  if (!currentClassId) { notifCard.style.display = "none"; rosterCard.style.display = "none"; return; }
+  const cls = classes.find(c => c.id === currentClassId);
+  document.getElementById("classCodeDisplay").textContent = cls?.classCode || "";
+  notifCard.style.display = "block";
+  rosterCard.style.display = "block";
+  await loadRoster();
+  unsubscribeNotifs = listenPendingNotifications(currentClassId, renderNotifications);
+});
+
+async function loadRoster() {
+  const students = await listStudents(currentClassId);
+  rosterBody.innerHTML = students.length
+    ? students.map(s => `
+        <tr>
+          <td>${s.name}</td>
+          <td>${levelInfo(s.level).label}</td>
+          <td>
+            <button class="mini-btn" data-id="${s.id}" data-delta="-1">-1 level</button>
+            <button class="mini-btn" data-id="${s.id}" data-delta="1">+1 level</button>
+          </td>
+        </tr>`).join("")
+    : `<tr><td colspan="3">No students yet — add one above.</td></tr>`;
+
+  rosterBody.querySelectorAll("button[data-delta]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const student = students.find(s => s.id === btn.dataset.id);
+      const delta = parseInt(btn.dataset.delta, 10);
+      const target = Math.max(1, Math.min(25, student.level + delta));
+      await setStudentLevel(student.id, target);
+      await loadRoster();
+    });
+  });
+}
+
+document.getElementById("addStudentBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newStudentName").value.trim();
+  const password = document.getElementById("newStudentPassword").value;
+  const errEl = document.getElementById("studentError");
+  errEl.style.display = "none";
+  if (!name || password.length < 6 || !currentClassId) {
+    errEl.textContent = "Enter a name and a password of at least 6 characters.";
+    errEl.style.display = "block";
+    return;
+  }
+  const cls = classes.find(c => c.id === currentClassId);
+  try {
+    await createStudentAccount({ classId: currentClassId, classCode: cls.classCode, name, password });
+    document.getElementById("newStudentName").value = "";
+    document.getElementById("newStudentPassword").value = "";
+    await loadRoster();
+  } catch (err) {
+    errEl.textContent = err.message || "Couldn't create that student.";
+    errEl.style.display = "block";
+  }
+});
+
+function renderNotifications(notifs) {
+  const notifList = document.getElementById("notifList");
+  notifList.innerHTML = notifs.length ? "" : "<p>No notifications yet.</p>";
+  notifs.forEach(n => {
+    const row = document.createElement("div");
+    row.className = "notif-row";
+    const info = levelInfo(n.level);
+    const nextInfo = levelInfo(nextLevel(n.level));
+    row.innerHTML = `
+      <div><strong>${n.studentName}</strong> got ${n.score}/${n.total} on ${info.label} 🎉</div>
+      <div class="notif-actions">
+        <button class="btn gold" data-action="approve">Unlock ${nextInfo.label}</button>
+        <button class="btn ghost" data-action="hold">Stay on ${info.label}</button>
+      </div>
+    `;
+    row.querySelector('[data-action="approve"]').addEventListener("click", async () => {
+      await resolveNotification(n.id, { approve: true, studentId: n.studentId, currentLevel: n.level });
+      await loadRoster();
+    });
+    row.querySelector('[data-action="hold"]').addEventListener("click", async () => {
+      await resolveNotification(n.id, { approve: false });
+    });
+    notifList.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>

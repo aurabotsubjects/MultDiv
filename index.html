@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Times Tables Race — Log In</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <div class="chrome-bar">
+    <div class="brand"><span class="flag">🏁</span> Times Tables Race</div>
+    <a href="teacher.html" class="who" style="text-decoration:underline;">Teacher sign-in</a>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="page">
+    <div class="panel">
+      <h1>Ready to race?</h1>
+      <p>Enter your class code, find your name, then your password.</p>
+    </div>
+
+    <div class="panel" style="display:flex; flex-direction:column; gap:14px;">
+      <div>
+        <div class="label">Class code</div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="classCodeInput" placeholder="e.g. ROOM12" />
+          <button class="btn" id="findClassBtn">Find</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="label">Your name</div>
+        <select id="studentSelect" disabled><option value="">Enter your class code first</option></select>
+      </div>
+
+      <div>
+        <div class="label">Password</div>
+        <input type="password" id="passwordInput" disabled />
+      </div>
+
+      <div id="loginError" class="error-text" style="display:none;"></div>
+      <button class="btn gold" id="goBtn" disabled>Let's go 🚗</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { findClassByCode, getClassRoster, studentLogin } from "./js/auth.js";
+
+const studentSelect = document.getElementById("studentSelect");
+const passwordInput = document.getElementById("passwordInput");
+const goBtn = document.getElementById("goBtn");
+const loginError = document.getElementById("loginError");
+
+let foundClass = null;
+let roster = [];
+
+document.getElementById("findClassBtn").addEventListener("click", async () => {
+  hideError();
+  const code = document.getElementById("classCodeInput").value.trim();
+  if (!code) return;
+  foundClass = await findClassByCode(code);
+  if (!foundClass) {
+    showError("Couldn't find that class code — check with your teacher.");
+    studentSelect.disabled = true;
+    studentSelect.innerHTML = '<option value="">Enter your class code first</option>';
+    return;
+  }
+  roster = await getClassRoster(foundClass.id);
+  studentSelect.innerHTML = roster.length
+    ? '<option value="">Select your name</option>' + roster.map(s => `<option value="${s.email}">${s.name}</option>`).join("")
+    : '<option value="">No students in this class yet</option>';
+  studentSelect.disabled = false;
+});
+
+studentSelect.addEventListener("change", () => {
+  passwordInput.disabled = !studentSelect.value;
+  updateGoState();
+});
+passwordInput.addEventListener("input", updateGoState);
+
+function updateGoState() {
+  goBtn.disabled = !(studentSelect.value && passwordInput.value.length >= 6);
+}
+
+goBtn.addEventListener("click", async () => {
+  hideError();
+  try {
+    const profile = await studentLogin(studentSelect.value, passwordInput.value);
+    sessionStorage.setItem("ttr_uid", profile.uid);
+    sessionStorage.setItem("ttr_name", profile.name);
+    sessionStorage.setItem("ttr_classId", profile.classId);
+    sessionStorage.setItem("ttr_className", foundClass.className);
+    sessionStorage.setItem("ttr_classCode", foundClass.classCode);
+    sessionStorage.setItem("ttr_level", profile.level ?? 1);
+    window.location.href = "menu.html";
+  } catch (err) {
+    showError("That password didn't match — try again.");
+  }
+});
+
+function showError(msg) { loginError.textContent = msg; loginError.style.display = "block"; }
+function hideError() { loginError.style.display = "none"; }
+</script>
+</body>
+</html>

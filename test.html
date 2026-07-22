@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Times Tables Race — Test</title>
+<link rel="stylesheet" href="css/style.css" />
+<style>
+  .timer-banner {
+    position: sticky; top: 0; z-index: 5; background: #0F1319; color: var(--track);
+    border-radius: 12px; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--font-display); font-weight: 800; font-size: 1.4rem;
+  }
+  .timer-banner.warn { color: var(--coral); }
+  .q-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .q-item { background: #0F1319; border-radius: 10px; padding: 9px 11px; display: flex; align-items: center; gap: 8px; border: 2px solid var(--line); }
+  .q-item.correct { border-color: var(--teal); }
+  .q-item.wrong { border-color: var(--coral); }
+  .q-item .q-text { font-family: var(--font-display); font-weight: 700; flex: 1; font-size: 0.95rem; }
+  .q-item input { width: 60px; text-align: center; padding: 7px; }
+  @media (max-width: 480px) { .q-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="chrome-bar">
+    <div class="brand"><span class="flag">⏱️</span> 1-Minute Test</div>
+    <a class="who" href="menu.html" style="text-decoration:underline;">← Menu</a>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="page">
+    <div class="panel" id="introCard">
+      <h1 id="introTitle">Level test</h1>
+      <p>20 questions, 60 seconds, all correct to unlock the next level.</p>
+      <button class="btn gold" id="startBtn" style="margin-top:12px;">Start test</button>
+    </div>
+
+    <div id="testCard" style="display:none; flex-direction:column; gap:14px;">
+      <div class="timer-banner" id="timerBanner">60s</div>
+      <form id="testForm" class="q-grid"></form>
+      <button class="btn" id="submitBtn">Submit answers</button>
+    </div>
+
+    <div class="panel" id="resultCard" style="display:none;"></div>
+  </div>
+</div>
+
+<script type="module">
+import { saveTestResult } from "./js/db.js";
+import { levelInfo, generateQuestion } from "./js/levels.js";
+
+const classId = sessionStorage.getItem("ttr_classId");
+const studentId = sessionStorage.getItem("ttr_uid");
+const studentName = sessionStorage.getItem("ttr_name") || "Player";
+const level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
+
+if (!classId || !studentId) window.location.href = "index.html";
+
+document.getElementById("introTitle").textContent = `${levelInfo(level).label} test`;
+
+const introCard = document.getElementById("introCard");
+const testCard = document.getElementById("testCard");
+const resultCard = document.getElementById("resultCard");
+const timerBanner = document.getElementById("timerBanner");
+const testForm = document.getElementById("testForm");
+
+let questions = [];
+let timeLeft = 60;
+let timerInterval = null;
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  introCard.style.display = "none";
+  testCard.style.display = "flex";
+  buildQuestions();
+  startTimer();
+});
+
+function buildQuestions() {
+  questions = Array.from({ length: 20 }, () => generateQuestion(level));
+  testForm.innerHTML = questions.map((q, i) => `
+    <div class="q-item" id="q-${i}">
+      <div class="q-text">${q.text} =</div>
+      <input type="number" inputmode="numeric" id="input-${i}" autocomplete="off" />
+    </div>
+  `).join("");
+  document.getElementById("input-0").focus();
+}
+
+function startTimer() {
+  timeLeft = 60;
+  timerBanner.textContent = `${timeLeft}s`;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerBanner.textContent = `${timeLeft}s`;
+    if (timeLeft <= 10) timerBanner.classList.add("warn");
+    if (timeLeft <= 0) { clearInterval(timerInterval); finishTest(); }
+  }, 1000);
+}
+
+document.getElementById("submitBtn").addEventListener("click", () => {
+  clearInterval(timerInterval);
+  finishTest();
+});
+
+async function finishTest() {
+  testCard.style.display = "none";
+  let score = 0;
+  questions.forEach((q, i) => {
+    const val = parseInt(document.getElementById(`input-${i}`)?.value, 10);
+    if (val === q.answer) score++;
+  });
+
+  const passed = score === 20;
+  resultCard.style.display = "block";
+  resultCard.innerHTML = passed
+    ? `<h1>🎉 Perfect score!</h1><p>${studentName}, you got all 20 right! Your teacher will get a message to unlock the next level.</p>`
+    : `<h1>Score: ${score} / 20</h1><p>Almost there — practise with a friend, then try again when you're ready.</p>`;
+
+  const backBtn = document.createElement("button");
+  backBtn.className = "btn ghost";
+  backBtn.textContent = "Back to menu";
+  backBtn.style.marginTop = "14px";
+  backBtn.addEventListener("click", () => window.location.href = "menu.html");
+  resultCard.appendChild(backBtn);
+
+  try {
+    await saveTestResult(classId, { studentId, studentName, level, score, total: 20 });
+  } catch (err) {
+    console.warn("Couldn't save test result to Firebase (is it configured yet?)", err);
+  }
+}
+</script>
+</body>
+</html>

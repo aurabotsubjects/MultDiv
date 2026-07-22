@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Times Tables Race — Game Menu</title>
+<link rel="stylesheet" href="css/style.css" />
+<style>
+  .game-card.disabled { opacity: 0.4; pointer-events: none; }
+  .soon-tag { font-size: 0.65rem; color: var(--ink-soft); font-family: var(--font-body); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="chrome-bar">
+    <div class="brand"><span class="flag">🏁</span> Times Tables Race</div>
+    <div class="who" id="whoBar"></div>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="page">
+    <div class="panel">
+      <span class="pill" id="levelPill">Level</span>
+      <h1 id="greeting">Hi!</h1>
+      <p>Pick a game to practise with a friend, or head straight to the test.</p>
+    </div>
+
+    <div class="panel">
+      <h2>⏱️ 1-minute test</h2>
+      <p>20 questions, 60 seconds. Get them all right to unlock the next level.</p>
+      <button class="btn coral" id="testBtn" style="margin-top:10px;">Take the test</button>
+    </div>
+
+    <div class="panel">
+      <h2>🎮 Practice games</h2>
+      <div class="game-grid" style="margin-top:12px;" id="gameGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const classId = sessionStorage.getItem("ttr_classId");
+const uid = sessionStorage.getItem("ttr_uid");
+const name = sessionStorage.getItem("ttr_name");
+const level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
+
+if (!classId || !uid) window.location.href = "index.html";
+
+import("./js/levels.js").then(({ levelInfo }) => {
+  document.getElementById("levelPill").textContent = levelInfo(level).label;
+});
+
+document.getElementById("whoBar").textContent = `${name} · ${sessionStorage.getItem("ttr_className") || ""}`;
+document.getElementById("greeting").textContent = `Hi, ${name}!`;
+
+document.getElementById("testBtn").addEventListener("click", () => window.location.href = "test.html");
+
+const games = [
+  { emoji: "🏁", name: "Multiple Race", href: "games/multiple-race.html", ready: true },
+  { emoji: "🏓", name: "Table Pong", href: "games/pong.html", ready: true },
+  { emoji: "🏎️", name: "Race Car Math", href: "games/race-car-math.html", ready: true },
+  { emoji: "🫧", name: "Bubble Pop", href: "games/math-bubble-pop.html", ready: false },
+  { emoji: "💥", name: "Burst Your Bubble", href: "games/burst-your-bubble.html", ready: false },
+  { emoji: "🧠", name: "Memory Showdown", href: "games/memory.html", ready: false },
+  { emoji: "📍", name: "Pin Drop", href: "games/pindrop.html", ready: false },
+  { emoji: "🏦", name: "Break the Bank", href: "games/break-the-bank.html", ready: false },
+  { emoji: "🏰", name: "Base Attack", href: "games/base-attack.html", ready: false },
+  { emoji: "💧", name: "Equations Drop", href: "games/equations-drop.html", ready: false },
+  { emoji: "🔴", name: "Speed Connect 4", href: "games/speed-connect-4.html", ready: false },
+];
+
+document.getElementById("gameGrid").innerHTML = games.map(g => `
+  <a class="game-card ${g.ready ? "" : "disabled"}" href="${g.ready ? g.href : "#"}">
+    <div class="emoji">${g.emoji}</div>
+    <div class="name">${g.name}</div>
+    ${g.ready ? "" : '<div class="soon-tag">Coming soon</div>'}
+  </a>
+`).join("");
+</script>
+</body>
+</html>

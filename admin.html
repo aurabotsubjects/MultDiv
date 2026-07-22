@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Times Tables Race — Admin</title>
+<link rel="stylesheet" href="css/style.css" />
+<style>
+  .req-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .req-row:last-child { border-bottom: none; }
+  .req-actions { display: flex; gap: 8px; }
+  .req-actions .btn { padding: 8px 14px; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="chrome-bar">
+    <div class="brand"><span class="flag">🏁</span> Admin</div>
+    <div class="who" id="whoBar"></div>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="page">
+    <div class="panel" id="loginPanel">
+      <h1>Admin sign-in</h1>
+      <p>This is the one account used to approve teacher accounts.</p>
+      <div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+        <div><div class="label">Email</div><input type="text" id="email" /></div>
+        <div><div class="label">Password</div><input type="password" id="password" /></div>
+        <div id="loginError" class="error-text" style="display:none;"></div>
+        <button class="btn gold" id="loginBtn">Sign in</button>
+      </div>
+    </div>
+
+    <div class="panel" id="pendingPanel" style="display:none;">
+      <h2>🔔 Teacher account requests</h2>
+      <div id="pendingList"><p>No pending requests.</p></div>
+    </div>
+
+    <div class="panel" id="approvedPanel" style="display:none;">
+      <h2>Approved teachers</h2>
+      <table><thead><tr><th>Name</th><th>Email</th></tr></thead><tbody id="approvedBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { loginWithEmail, approveTeacherRequest, denyTeacherRequest, logout } from "./js/auth.js";
+import { listTeachersByStatus } from "./js/db.js";
+
+const loginPanel = document.getElementById("loginPanel");
+const pendingPanel = document.getElementById("pendingPanel");
+const approvedPanel = document.getElementById("approvedPanel");
+const whoBar = document.getElementById("whoBar");
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const errEl = document.getElementById("loginError");
+  errEl.style.display = "none";
+  try {
+    const profile = await loginWithEmail(email, password);
+    if (profile.role !== "admin") {
+      await logout();
+      throw new Error("This account isn't set up as an admin.");
+    }
+    whoBar.innerHTML = `${profile.name} · <a href="#" id="logoutLink" style="text-decoration:underline;">Sign out</a>`;
+    document.getElementById("logoutLink").addEventListener("click", (e) => { e.preventDefault(); location.reload(); });
+    loginPanel.style.display = "none";
+    pendingPanel.style.display = "block";
+    approvedPanel.style.display = "block";
+    await refreshLists();
+  } catch (err) {
+    errEl.textContent = err.message || "Couldn't sign in.";
+    errEl.style.display = "block";
+  }
+});
+
+async function refreshLists() {
+  const [pending, approved] = await Promise.all([
+    listTeachersByStatus("pending"),
+    listTeachersByStatus("approved")
+  ]);
+
+  const pendingList = document.getElementById("pendingList");
+  pendingList.innerHTML = pending.length ? "" : "<p>No pending requests.</p>";
+  pending.forEach(t => {
+    const row = document.createElement("div");
+    row.className = "req-row";
+    row.innerHTML = `
+      <div><strong>${t.name}</strong><br /><span class="hint-text">${t.email}</span></div>
+      <div class="req-actions">
+        <button class="btn gold" data-action="approve">Approve</button>
+        <button class="btn ghost" data-action="deny">Deny</button>
+      </div>
+    `;
+    row.querySelector('[data-action="approve"]').addEventListener("click", async () => {
+      await approveTeacherRequest(t.id);
+      await refreshLists();
+    });
+    row.querySelector('[data-action="deny"]').addEventListener("click", async () => {
+      await denyTeacherRequest(t.id);
+      await refreshLists();
+    });
+    pendingList.appendChild(row);
+  });
+
+  document.getElementById("approvedBody").innerHTML = approved.length
+    ? approved.map(t => `<tr><td>${t.name}</td><td>${t.email}</td></tr>`).join("")
+    : `<tr><td colspan="2">No approved teachers yet.</td></tr>`;
+}
+</script>
+</body>
+</html>

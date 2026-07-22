@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Times Table Pong</title>
+<link rel="stylesheet" href="../css/style.css" />
+<style>
+  * { -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { height: 100%; overflow: hidden; }
+  .wrap { height: 100dvh; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .hero { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; }
+  .hero .title { font-family: var(--font-display); font-weight: 900; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+  .scoreline { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; display: flex; gap: 10px; }
+  .scoreline .a { color: var(--coral); } .scoreline .b { color: var(--blue); }
+
+  #matchArea { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  .field-wrap { flex: 1; min-height: 0; position: relative; background: linear-gradient(90deg, transparent 49.4%, var(--line) 49.4% 50.6%, transparent 50.6%), #0B0E13; border-radius: 14px; border: 1px solid var(--line); overflow: hidden; }
+  .paddle { position: absolute; width: 1.6%; min-width: 8px; border-radius: 6px; box-shadow: 0 0 10px currentColor; transition: opacity 0.15s ease; }
+  .paddle.a { left: 1%; background: var(--coral); color: var(--coral); }
+  .paddle.b { right: 1%; background: var(--blue); color: var(--blue); }
+  .paddle.hidden-paddle { opacity: 0; }
+  .ball { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+  .center-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; color: var(--gold); text-shadow: 0 2px 8px rgba(0,0,0,0.6); pointer-events: none; }
+
+  .controls { flex: 0 0 auto; display: flex; gap: 6px; height: 116px; }
+  .side-panel { flex: 1; min-width: 0; background: var(--asphalt-2); border: 1px solid var(--line); border-radius: 14px; padding: 6px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+  .side-panel.dim { opacity: 0.45; }
+  .side-panel .name-tag { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; }
+  .side-panel.a .name-tag { color: var(--coral); } .side-panel.b .name-tag { color: var(--blue); }
+  .equation { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; }
+  .options-row { display: flex; gap: 6px; }
+  .opt-btn { font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; width: 44px; height: 44px; border-radius: 50%; background: #0F1319; color: var(--track); border: 2px solid var(--line); }
+  .opt-btn:disabled { opacity: 0.35; }
+  .waiting-txt { font-size: 0.75rem; color: var(--ink-soft); text-align: center; }
+  .down-txt { font-family: var(--font-display); font-weight: 800; color: var(--coral); font-size: 0.82rem; }
+
+  .joystick-pad { width: 76px; height: 76px; border-radius: 50%; background: #0F1319; border: 2px solid var(--line); position: relative; touch-action: none; }
+  .joystick-knob { width: 32px; height: 32px; border-radius: 50%; background: var(--gold); position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 8px rgba(0,0,0,0.5); }
+
+  .rotate-overlay { display: none; }
+  @media (orientation: portrait) and (max-width: 900px) {
+    .wrap { display: none; }
+    .rotate-overlay { display: flex; height: 100dvh; align-items: center; justify-content: center; flex-direction: column; gap: 14px; text-align: center; padding: 30px; }
+    .rotate-overlay .icon { font-size: 3rem; }
+  }
+</style>
+</head>
+<body>
+<div class="rotate-overlay"><div class="icon">🔄</div><h2>Turn your device sideways</h2><p>Table Pong is played in landscape, with a player at each end.</p></div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="title"><span>🏓</span> TABLE PONG</div>
+    <div class="scoreline"><span class="a" id="scoreA">0</span> : <span class="b" id="scoreB">0</span></div>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="panel" id="setupPanel" style="display:flex; flex-direction:column; gap:12px;">
+    <h1>Set up your match</h1>
+    <p id="p1Line">Loading your profile…</p>
+    <div id="p2Container"></div>
+    <button class="btn gold" id="startBtn" style="display:none;">Start match 🏓</button>
+  </div>
+
+  <div id="matchArea" style="display:none;">
+    <div class="field-wrap" id="fieldWrap">
+      <div class="paddle a" id="paddleA"></div>
+      <div class="paddle b" id="paddleB"></div>
+      <div class="ball" id="ball"></div>
+      <div class="center-msg" id="centerMsg"></div>
+    </div>
+    <div class="controls">
+      <div class="side-panel a" id="panelA"></div>
+      <div class="side-panel b" id="panelB"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { levelInfo, generateQuestion } from "../js/levels.js";
+import { renderPlayer2Login } from "../js/player2-login.js";
+
+const classId = sessionStorage.getItem("ttr_classId");
+if (!classId) window.location.href = "../index.html";
+
+const players = {
+  a: { uid: sessionStorage.getItem("ttr_uid"), name: sessionStorage.getItem("ttr_name"), level: parseInt(sessionStorage.getItem("ttr_level") || "1", 10) },
+  b: null
+};
+
+document.getElementById("p1Line").textContent = `${players.a.name} (${levelInfo(players.a.level).label}) is the left player.`;
+renderPlayer2Login(document.getElementById("p2Container"), classId, players.a.uid).then(profile => {
+  players.b = { uid: profile.uid, name: profile.name, level: profile.level || 1 };
+  document.getElementById("p2Container").innerHTML = `<p class="hint-text">Right player: ${profile.name} (${levelInfo(players.b.level).label}) ✔️</p>`;
+  document.getElementById("startBtn").style.display = "inline-block";
+});
+
+const setupPanel = document.getElementById("setupPanel");
+const matchArea = document.getElementById("matchArea");
+const paddleEls = { a: document.getElementById("paddleA"), b: document.getElementById("paddleB") };
+const ballEl = document.getElementById("ball");
+const centerMsg = document.getElementById("centerMsg");
+const panelEls = { a: document.getElementById("panelA"), b: document.getElementById("panelB") };
+const scoreEls = { a: document.getElementById("scoreA"), b: document.getElementById("scoreB") };
+
+const PADDLE_HEIGHT_PCT = 24;
+const BASE_SPEED = 62, MAX_SPEED = 130, SPEED_STEP = 5, WIN_SCORE = 10;
+
+let score = { a: 0, b: 0 };
+let paddleY = { a: 50, b: 50 };
+let paddleState = { a: "inactive", b: "inactive" };
+let joyVel = { a: 0, b: 0 };
+let ball = { x: 50, y: 50, vx: 0, vy: 0 };
+let turn = "a";
+let currentAnswer = { correct: null, resolved: false };
+let running = false, lastTs = null, rafId = null;
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  score = { a: 0, b: 0 };
+  updateScoreDisplay();
+  setupPanel.style.display = "none";
+  matchArea.style.display = "flex";
+  serve(Math.random() < 0.5 ? "a" : "b");
+  running = true; lastTs = null;
+  rafId = requestAnimationFrame(loop);
+});
+
+function updateScoreDisplay() { scoreEls.a.textContent = score.a; scoreEls.b.textContent = score.b; }
+
+function buildOptions(correct) {
+  const used = new Set([correct]); const opts = [correct];
+  const offsets = [-2, -1, 1, 2].sort(() => Math.random() - 0.5);
+  for (const off of offsets) {
+    if (opts.length >= 3) break;
+    const val = correct + off;
+    if (val > 0 && !used.has(val)) { used.add(val); opts.push(val); }
+  }
+  while (opts.length < 3) {
+    const val = correct + Math.floor(Math.random() * 5) - 2;
+    if (val > 0 && !used.has(val)) { used.add(val); opts.push(val); }
+  }
+  return opts.sort(() => Math.random() - 0.5);
+}
+
+function serve(toKey) {
+  turn = toKey;
+  ball.x = 50; ball.y = 50;
+  const speed = BASE_SPEED;
+  ball.vx = toKey === "a" ? -speed : speed;
+  ball.vy = (Math.random() * 2 - 1) * speed * 0.5;
+  paddleState[toKey] = "inactive";
+  joyVel[toKey] = 0;
+  renderPaddles();
+  newQuestionFor(toKey);
+  renderWaitingPanel(toKey === "a" ? "b" : "a");
+  centerMsg.textContent = "";
+}
+
+function newQuestionFor(key) {
+  const q = generateQuestion(players[key].level);
+  currentAnswer = { correct: q.answer, resolved: false };
+  const options = buildOptions(q.answer);
+  const panel = panelEls[key];
+  panel.classList.remove("dim");
+  panel.innerHTML = `
+    <div class="name-tag">${players[key].name}</div>
+    <div class="equation">${q.text} = ?</div>
+    <div class="options-row">${options.map(o => `<button type="button" class="opt-btn" data-val="${o}">${o}</button>`).join("")}</div>
+  `;
+  panel.querySelectorAll(".opt-btn").forEach(btn => {
+    btn.addEventListener("click", () => handleAnswer(key, parseInt(btn.dataset.val, 10)));
+  });
+}
+
+function renderWaitingPanel(key) {
+  const panel = panelEls[key];
+  panel.classList.add("dim");
+  panel.innerHTML = `<div class="name-tag">${players[key].name}</div><div class="waiting-txt">Watching the rally…</div>`;
+}
+
+function handleAnswer(key, value) {
+  if (currentAnswer.resolved || turn !== key) return;
+  currentAnswer.resolved = true;
+  const panel = panelEls[key];
+  panel.querySelectorAll(".opt-btn").forEach(b => b.disabled = true);
+  if (value === currentAnswer.correct) {
+    paddleState[key] = "active";
+    renderPaddles();
+    showJoystick(key);
+  } else {
+    paddleState[key] = "disabled";
+    renderPaddles();
+    panel.innerHTML = `<div class="name-tag">${players[key].name}</div><div class="down-txt">Paddle down! ⚠️</div>`;
+  }
+}
+
+// ---- persistent joystick elements (created once, reused every rally) ----
+const joyNameTag = {}, joyPad = {}, joyKnob = {};
+["a", "b"].forEach(key => {
+  joyNameTag[key] = document.createElement("div");
+  joyNameTag[key].className = "name-tag";
+  joyKnob[key] = document.createElement("div");
+  joyKnob[key].className = "joystick-knob";
+  joyPad[key] = document.createElement("div");
+  joyPad[key].className = "joystick-pad";
+  joyPad[key].appendChild(joyKnob[key]);
+
+  const maxR = 22; let dragging = false;
+  function setVelocityFromOffset(offsetY) {
+    const clamped = Math.max(-maxR, Math.min(maxR, offsetY));
+    joyKnob[key].style.transform = `translate(-50%, calc(-50% + ${clamped}px))`;
+    joyVel[key] = (clamped / maxR) * 95;
+  }
+  function resetKnob() { joyKnob[key].style.transform = "translate(-50%, -50%)"; joyVel[key] = 0; }
+  function onDown(e) { dragging = true; onMove(e); }
+  function onMove(e) {
+    if (!dragging) return;
+    const rect = joyPad[key].getBoundingClientRect();
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setVelocityFromOffset(clientY - (rect.top + rect.height / 2));
+    e.preventDefault();
+  }
+  function onUp() { if (dragging) { dragging = false; resetKnob(); } }
+  joyPad[key].addEventListener("pointerdown", onDown);
+  joyPad[key].addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  joyPad[key].addEventListener("touchstart", onDown, { passive: false });
+  joyPad[key].addEventListener("touchmove", onMove, { passive: false });
+  window.addEventListener("touchend", onUp);
+});
+
+function showJoystick(key) {
+  const panel = panelEls[key];
+  joyNameTag[key].textContent = players[key].name;
+  joyKnob[key].style.transform = "translate(-50%, -50%)";
+  joyVel[key] = 0;
+  panel.innerHTML = "";
+  panel.appendChild(joyNameTag[key]);
+  panel.appendChild(joyPad[key]);
+}
+
+function renderPaddles() {
+  ["a", "b"].forEach(key => {
+    const el = paddleEls[key];
+    el.style.height = PADDLE_HEIGHT_PCT + "%";
+    el.style.top = (paddleY[key] - PADDLE_HEIGHT_PCT / 2) + "%";
+    el.classList.toggle("hidden-paddle", paddleState[key] === "disabled");
+  });
+}
+
+function loop(ts) {
+  if (!running) return;
+  if (lastTs === null) lastTs = ts;
+  const dt = Math.min(0.05, (ts - lastTs) / 1000);
+  lastTs = ts;
+
+  ["a", "b"].forEach(key => {
+    if (paddleState[key] === "active" && joyVel[key] !== 0) {
+      paddleY[key] += joyVel[key] * dt;
+      const half = PADDLE_HEIGHT_PCT / 2;
+      paddleY[key] = Math.max(half, Math.min(100 - half, paddleY[key]));
+    }
+  });
+  renderPaddles();
+
+  const prevX = ball.x;
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
+  if (ball.y <= 1) { ball.y = 1; ball.vy = Math.abs(ball.vy); }
+  if (ball.y >= 99) { ball.y = 99; ball.vy = -Math.abs(ball.vy); }
+
+  const edgeA = 3.5, edgeB = 96.5;
+  let resolved = false;
+
+  if (ball.vx < 0 && prevX > edgeA && ball.x <= edgeA) {
+    resolved = true;
+    const hit = paddleState.a !== "disabled" && ball.y >= paddleY.a - PADDLE_HEIGHT_PCT / 2 && ball.y <= paddleY.a + PADDLE_HEIGHT_PCT / 2;
+    if (hit) bounceFrom("a"); else pointFor("b");
+  } else if (ball.vx > 0 && prevX < edgeB && ball.x >= edgeB) {
+    resolved = true;
+    const hit = paddleState.b !== "disabled" && ball.y >= paddleY.b - PADDLE_HEIGHT_PCT / 2 && ball.y <= paddleY.b + PADDLE_HEIGHT_PCT / 2;
+    if (hit) bounceFrom("b"); else pointFor("a");
+  }
+
+  if (!resolved) { renderBall(); rafId = requestAnimationFrame(loop); }
+}
+
+function renderBall() { ballEl.style.left = ball.x + "%"; ballEl.style.top = ball.y + "%"; }
+
+function bounceFrom(key) {
+  const offset = (ball.y - paddleY[key]) / (PADDLE_HEIGHT_PCT / 2);
+  const speed = Math.min(MAX_SPEED, Math.hypot(ball.vx, ball.vy) + SPEED_STEP);
+  const dir = key === "a" ? 1 : -1;
+  ball.vx = dir * speed * 0.9;
+  ball.vy = offset * speed * 0.7;
+  ball.x = key === "a" ? 4 : 96;
+
+  paddleState[key] = "inactive"; joyVel[key] = 0;
+  const other = key === "a" ? "b" : "a";
+  turn = other;
+  paddleState[other] = "inactive"; joyVel[other] = 0;
+  renderPaddles();
+  newQuestionFor(other);
+  renderWaitingPanel(key);
+  renderBall();
+  rafId = requestAnimationFrame(loop);
+}
+
+function pointFor(key) {
+  score[key]++;
+  updateScoreDisplay();
+  if (score[key] >= WIN_SCORE) { endMatch(key); return; }
+  centerMsg.textContent = `POINT — ${players[key].name}!`;
+  running = false;
+  setTimeout(() => {
+    centerMsg.textContent = "";
+    running = true; lastTs = null;
+    serve(key === "a" ? "b" : "a");
+    rafId = requestAnimationFrame(loop);
+  }, 1100);
+}
+
+function endMatch(winnerKey) {
+  running = false;
+  cancelAnimationFrame(rafId);
+  ["a", "b"].forEach(k => { panelEls[k].classList.add("dim"); panelEls[k].innerHTML = `<div class="name-tag">${players[k].name}</div>`; });
+  centerMsg.innerHTML = `🏆 ${players[winnerKey].name} WINS! 🏆`;
+  const btnRow = document.createElement("div");
+  btnRow.style.cssText = "display:flex; gap:10px; pointer-events:auto;";
+  btnRow.innerHTML = `<button class="btn gold" id="rematchBtn">Rematch</button><button class="btn ghost" id="menuBtn">Back to menu</button>`;
+  centerMsg.appendChild(btnRow);
+  document.getElementById("rematchBtn").addEventListener("click", () => {
+    score = { a: 0, b: 0 }; updateScoreDisplay();
+    running = true; lastTs = null;
+    serve(Math.random() < 0.5 ? "a" : "b");
+    rafId = requestAnimationFrame(loop);
+  });
+  document.getElementById("menuBtn").addEventListener("click", () => window.location.href = "../menu.html");
+}
+</script>
+</body>
+</html>

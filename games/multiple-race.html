@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Multiple Race</title>
+<link rel="stylesheet" href="../css/style.css" />
+<style>
+  .race-shell { max-width: 900px; }
+  .track-wrap { background: #0B0E13; border-radius: 14px; padding: 12px; border: 1px solid var(--line); }
+  .track-grid { display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); gap: 3px; aspect-ratio: 1/1; }
+  .cell { position: relative; background: var(--track); border-radius: 5px; display: flex; align-items: flex-end; padding: 2px 4px; font-weight: 700; font-size: clamp(6px, 1.3vw, 10px); color: #B3A98D; }
+  .cell.start { background: var(--teal); color: #0F1319; }
+  .cell.finish { background: repeating-conic-gradient(#0B0E13 0% 25%, var(--track) 0% 50%) 50% / 10px 10px; color: #0F1319; }
+  .token { position: absolute; top: -5px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #0F1319; border: 2px solid #0F1319; }
+  .token.a { background: var(--coral); right: 3px; } .token.b { background: var(--blue); right: 23px; }
+  .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 10px; font-weight: 700; }
+  .status-bar .side { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+  .status-bar .side.dim { opacity: 0.45; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .dot.a { background: var(--coral); } .dot.b { background: var(--blue); }
+  .turn-card { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .big-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; }
+  .question-display { font-family: var(--font-display); font-size: 2.4rem; font-weight: 800; }
+  .timer-track { width: 100%; height: 12px; background: #0F1319; border-radius: 999px; overflow: hidden; }
+  .timer-fill { height: 100%; background: var(--teal); width: 100%; }
+  .timer-fill.warn { background: var(--coral); }
+  .numpad-display { width: 100%; max-width: 220px; font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; text-align: center; letter-spacing: 0.1em; background: #0F1319; border: 2px solid var(--line); border-radius: 10px; padding: 7px; min-height: 1.5em; }
+  .numpad-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 100%; max-width: 320px; }
+  .numpad-key { padding: 9px 0; font-size: 1rem; border-radius: 8px; }
+  .numpad-key.span2 { grid-column: span 2; } .numpad-key.span3 { grid-column: span 3; }
+  .result-banner { font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; }
+  .result-banner.good { color: var(--teal); } .result-banner.bad { color: var(--coral); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="chrome-bar">
+    <div class="brand"><span class="flag">🏁</span> Multiple Race</div>
+    <a class="who" href="../menu.html" style="text-decoration:underline;">← Menu</a>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="page race-shell">
+    <div class="panel" id="setupPanel" style="display:flex; flex-direction:column; gap:14px;">
+      <h1>Set up your race</h1>
+      <p id="p1Line">Loading your profile…</p>
+      <div id="p2Container"></div>
+      <button class="btn gold" id="startBtn" style="display:none;">Start race 🏁</button>
+    </div>
+
+    <div id="gameArea" style="display:none;">
+      <div class="track-wrap">
+        <div class="status-bar">
+          <div class="side" id="statusA"><span class="dot a"></span> <span id="nameA"></span></div>
+          <div class="pill" id="turnBadge">—</div>
+          <div class="side" id="statusB"><span id="nameB"></span> <span class="dot b"></span></div>
+        </div>
+        <div class="track-grid" id="trackGrid"></div>
+      </div>
+      <div class="panel turn-card" id="turnCard" style="margin-top:16px;"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { levelInfo, generateQuestion } from "../js/levels.js";
+import { renderPlayer2Login } from "../js/player2-login.js";
+
+const classId = sessionStorage.getItem("ttr_classId");
+if (!classId) window.location.href = "../index.html";
+
+const players = {
+  a: { uid: sessionStorage.getItem("ttr_uid"), name: sessionStorage.getItem("ttr_name"), level: parseInt(sessionStorage.getItem("ttr_level") || "1", 10), pos: 0 },
+  b: null
+};
+
+document.getElementById("p1Line").textContent = `${players.a.name} (${levelInfo(players.a.level).label}) is Player 1.`;
+renderPlayer2Login(document.getElementById("p2Container"), classId, players.a.uid).then(profile => {
+  players.b = { uid: profile.uid, name: profile.name, level: profile.level || 1, pos: 0 };
+  document.getElementById("p2Container").innerHTML = `<p class="hint-text">Player 2: ${profile.name} (${levelInfo(players.b.level).label}) ✔️</p>`;
+  document.getElementById("startBtn").style.display = "inline-block";
+});
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  document.getElementById("setupPanel").style.display = "none";
+  document.getElementById("gameArea").style.display = "block";
+  beginGame();
+});
+
+// ---------- Track ----------
+const trackGrid = document.getElementById("trackGrid");
+const cellsByNumber = {};
+function buildTrack() {
+  trackGrid.innerHTML = "";
+  for (let r = 0; r < 10; r++) {
+    for (let c = 0; c < 10; c++) {
+      const number = r % 2 === 0 ? (r * 10 + c + 1) : (r * 10 + (10 - c));
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      if (number === 1) cell.classList.add("start");
+      if (number === 100) cell.classList.add("finish");
+      cell.textContent = number;
+      cell.style.gridRow = (10 - r); cell.style.gridColumn = c + 1;
+      trackGrid.appendChild(cell);
+      cellsByNumber[number] = cell;
+    }
+  }
+}
+function placeToken(key, pos) {
+  document.querySelectorAll(`.token.${key}`).forEach(t => t.remove());
+  const cellNumber = Math.max(1, Math.min(100, pos === 0 ? 1 : pos));
+  const token = document.createElement("div");
+  token.className = `token ${key}`;
+  token.textContent = key === "a" ? "A" : "B";
+  cellsByNumber[cellNumber].appendChild(token);
+}
+
+// ---------- Game state ----------
+let currentKey = "a";
+let questionTimeout = null, questionStart = null, answered = false, typedValue = "";
+const turnCard = document.getElementById("turnCard");
+
+function beginGame() {
+  buildTrack();
+  placeToken("a", 0); placeToken("b", 0);
+  document.getElementById("nameA").textContent = players.a.name;
+  document.getElementById("nameB").textContent = players.b.name;
+  updateScoreDisplay();
+  renderReady();
+}
+function updateScoreDisplay() {
+  document.getElementById("statusA").classList.toggle("dim", currentKey !== "a");
+  document.getElementById("statusB").classList.toggle("dim", currentKey !== "b");
+  document.getElementById("turnBadge").textContent = levelInfo(players[currentKey].level).label;
+}
+function renderReady() {
+  updateScoreDisplay();
+  const p = players[currentKey];
+  turnCard.innerHTML = `
+    <div class="label">Pass the device to</div>
+    <div class="big-name">${p.name}</div>
+    <p>On square ${p.pos || "0 — the start line"}. Get ready for a ${levelInfo(p.level).label} question!</p>
+    <button class="btn gold" id="readyBtn">I'm ready</button>
+  `;
+  document.getElementById("readyBtn").addEventListener("click", startQuestion);
+}
+function startQuestion() {
+  answered = false; typedValue = "";
+  const q = generateQuestion(players[currentKey].level);
+  turnCard.innerHTML = `
+    <div class="label">${players[currentKey].name}'s turn</div>
+    <div class="question-display">${q.text} = ?</div>
+    <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+    <div class="numpad-display" id="numpadDisplay">&nbsp;</div>
+    <div class="numpad-grid" id="numpadGrid">
+      ${[1,2,3,4,5,6,7,8,9,0].map(n => `<button type="button" class="btn numpad-key" data-key="${n}">${n}</button>`).join("")}
+      <button type="button" class="btn ghost numpad-key span2" data-key="back">⌫</button>
+      <button type="button" class="btn gold numpad-key span3" data-key="enter">Enter ✓</button>
+    </div>
+  `;
+  const display = document.getElementById("numpadDisplay");
+  const fill = document.getElementById("timerFill");
+  document.getElementById("numpadGrid").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-key]");
+    if (!btn || answered) return;
+    const key = btn.dataset.key;
+    if (key === "back") typedValue = typedValue.slice(0, -1);
+    else if (key === "enter") { submitAnswer(typedValue === "" ? null : parseInt(typedValue, 10), q.answer, false); return; }
+    else if (typedValue.length < 4) typedValue += key;
+    display.textContent = typedValue || "\u00A0";
+  });
+  questionStart = performance.now();
+  requestAnimationFrame(() => { fill.style.transition = "width 5s linear, background 2.5s linear"; fill.style.width = "0%"; fill.classList.add("warn"); });
+  questionTimeout = setTimeout(() => { if (!answered) submitAnswer(null, q.answer, true); }, 5000);
+}
+function submitAnswer(value, correctAnswer, timedOut) {
+  answered = true; clearTimeout(questionTimeout);
+  const elapsedSec = (performance.now() - questionStart) / 1000;
+  const isCorrect = !timedOut && value === correctAnswer;
+  let squares = 0;
+  if (isCorrect) {
+    if (elapsedSec < 1) squares = 1; else if (elapsedSec < 2) squares = 2;
+    else if (elapsedSec < 3) squares = 3; else if (elapsedSec < 4) squares = 4; else squares = 5;
+  }
+  players[currentKey].pos = Math.min(100, players[currentKey].pos + squares);
+  placeToken(currentKey, players[currentKey].pos);
+  updateScoreDisplay();
+  const p = players[currentKey];
+  const msg = timedOut ? `Time's up! The answer was ${correctAnswer}.`
+    : isCorrect ? `Correct in ${elapsedSec.toFixed(1)}s — move ${squares} square${squares === 1 ? "" : "s"}!`
+    : `Not quite — the answer was ${correctAnswer}.`;
+  turnCard.innerHTML = `<div class="result-banner ${isCorrect ? "good" : "bad"}">${msg}</div><div class="big-name">${p.name} is on square ${p.pos}</div>`;
+  setTimeout(() => {
+    if (players[currentKey].pos >= 100) finishGame(currentKey);
+    else { currentKey = currentKey === "a" ? "b" : "a"; renderReady(); }
+  }, 1500);
+}
+function finishGame(winnerKey) {
+  updateScoreDisplay();
+  const winner = players[winnerKey];
+  turnCard.innerHTML = `
+    <div class="label">🏁 Race over!</div>
+    <div class="big-name">${winner.name} wins!</div>
+    <p>${players.a.name}: ${players.a.pos} squares · ${players.b.name}: ${players.b.pos} squares</p>
+    <div style="display:flex; gap:10px;">
+      <button class="btn gold" id="againBtn">Play again</button>
+      <button class="btn ghost" id="menuBtn">Back to menu</button>
+    </div>
+  `;
+  document.getElementById("againBtn").addEventListener("click", () => { players.a.pos = 0; players.b.pos = 0; currentKey = "a"; beginGame(); });
+  document.getElementById("menuBtn").addEventListener("click", () => window.location.href = "../menu.html");
+}
+</script>
+</body>
+</html>
