@@ -611,7 +611,7 @@ const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
     if(p.isAI){
       p.aiCancel = scheduleAIAnswer(p.aiProfile, q, (isCorrect, value) => {
         p.aiCancel = null;
-        if(state.raceOver || !state.raceRunning) return;
+        if(state.raceOver) return;
         if(p.qa !== qa) return; // a new question replaced this one already
         document.getElementById(key+'Answer').textContent = value;
         submitAnswer(key, value);
