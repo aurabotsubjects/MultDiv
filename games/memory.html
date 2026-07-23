@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Memory — Times Tables Showdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#14132a;
+    --bg-panel:#1f1d45;
+    --bg-panel-light:#2a2761;
+    --p1: #2dd9c4;
+    --p1-dark: #12a594;
+    --p1-glow: rgba(45,217,196,0.55);
+    --p2: #ff5d8f;
+    --p2-dark: #d63e6d;
+    --p2-glow: rgba(255,93,143,0.55);
+    --gold: #ffd23f;
+    --ink: #f5f3ff;
+    --ink-dim: #b7b3e0;
+    --radius: 16px;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(ellipse at top, #201d4d 0%, var(--bg-deep) 60%);
+    color: var(--ink);
+    font-family: 'Nunito', sans-serif;
+    overflow-x:hidden;
+  }
+
+  h1,h2,h3, .display{ font-family:'Baloo 2', sans-serif; }
+
+  button{ font-family:'Baloo 2', sans-serif; cursor:pointer; border:none; }
+  button:focus-visible, .card:focus-visible{ outline: 3px solid var(--gold); outline-offset: 3px; }
+
+  #app{ min-height:100vh; display:flex; flex-direction:column; align-items:center; padding: 18px 14px 34px; }
+
+  /* ---------- SHARED HEADER ---------- */
+  .title-wrap{ text-align:center; margin-bottom: 10px; }
+  .title-wrap h1{
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, var(--p1), var(--gold) 50%, var(--p2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .title-wrap p{
+    margin: 4px 0 0;
+    color: var(--ink-dim);
+    font-weight: 700;
+    font-size: clamp(12px, 2.4vw, 15px);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .hidden{ display:none !important; }
+
+  /* ---------- SETUP SCREEN ---------- */
+  #setup-screen{ width:100%; max-width: 900px; }
+
+  .setup-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 10px;
+  }
+  @media (max-width: 640px){ .setup-grid{ grid-template-columns: 1fr; } }
+
+  .player-panel{
+    background: var(--bg-panel);
+    border-radius: var(--radius);
+    padding: 18px 16px 20px;
+    border: 2px solid transparent;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  .player-panel.p1{ border-color: var(--p1-dark); }
+  .player-panel.p2{ border-color: var(--p2-dark); }
+
+  .panel-head{ display:flex; align-items:center; gap:10px; margin-bottom: 6px; }
+  .panel-head .dot{ width:16px; height:16px; border-radius:50%; }
+  .p1 .panel-head .dot{ background: var(--p1); box-shadow: 0 0 12px var(--p1-glow); }
+  .p2 .panel-head .dot{ background: var(--p2); box-shadow: 0 0 12px var(--p2-glow); }
+  .panel-head h2{ font-size: 19px; margin:0; }
+
+  .name-input{
+    width:100%;
+    background: var(--bg-panel-light);
+    border: 2px solid transparent;
+    color: var(--ink);
+    font-family:'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin: 6px 0 12px;
+  }
+  .p1 .name-input:focus{ border-color: var(--p1); }
+  .p2 .name-input:focus{ border-color: var(--p2); }
+  .name-input::placeholder{ color: var(--ink-dim); opacity:0.7; }
+
+  .panel-sub{ font-size: 13px; color: var(--ink-dim); margin: 0 0 10px; font-weight:700;}
+
+  .table-grid{
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .table-btn{
+    aspect-ratio: 1/1;
+    border-radius: 12px;
+    background: var(--bg-panel-light);
+    color: var(--ink);
+    font-size: clamp(15px, 3vw, 20px);
+    font-weight: 700;
+    transition: transform .12s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .table-btn:active{ transform: scale(0.92); }
+  .p1 .table-btn.selected{ background: var(--p1); color: #072b26; box-shadow: 0 0 0 3px var(--p1-dark), 0 0 16px var(--p1-glow); }
+  .p2 .table-btn.selected{ background: var(--p2); color: #340317; box-shadow: 0 0 0 3px var(--p2-dark), 0 0 16px var(--p2-glow); }
+
+  #start-btn{
+    display:block;
+    width:100%;
+    max-width: 320px;
+    margin: 22px auto 0;
+    padding: 16px 20px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #201a05;
+    background: var(--gold);
+    border-radius: 999px;
+    box-shadow: 0 8px 0 #b8891f, 0 10px 20px rgba(0,0,0,0.4);
+    transition: transform .1s ease, box-shadow .1s ease, opacity .2s ease;
+    letter-spacing: 0.5px;
+  }
+  #start-btn:disabled{ opacity: 0.4; box-shadow: 0 8px 0 #6b5d34; cursor: not-allowed; }
+  #start-btn:not(:disabled):active{ transform: translateY(4px); box-shadow: 0 4px 0 #b8891f, 0 6px 14px rgba(0,0,0,0.4); }
+
+  .howto{
+    margin-top: 22px;
+    background: var(--bg-panel);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-size: 14px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+  .howto strong{ color: var(--ink); }
+
+  /* ---------- GAME SCREEN ---------- */
+  #game-screen{ width:100%; max-width: 900px; display:flex; flex-direction:column; align-items:center; }
+
+  .scoreboard{
+    width:100%;
+    display:flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .score-chip{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    background: var(--bg-panel);
+    border-radius: 999px;
+    padding: 8px 16px;
+    border: 2px solid transparent;
+    transition: box-shadow .2s ease, border-color .2s ease;
+  }
+  .score-chip .swatch{ width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+  .score-chip.p1 .swatch{ background: var(--p1); }
+  .score-chip.p2 .swatch{ background: var(--p2); }
+  .score-chip .name{ font-weight:800; font-size: 14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .score-chip .count{ margin-left:auto; font-weight: 900; font-size: 16px; }
+  .score-chip.active.p1{ border-color: var(--p1); box-shadow: 0 0 14px var(--p1-glow); }
+  .score-chip.active.p2{ border-color: var(--p2); box-shadow: 0 0 14px var(--p2-glow); }
+
+  .marquee{
+    width:100%;
+    text-align:center;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: clamp(15px, 3vw, 19px);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    background: var(--bg-panel);
+    transition: box-shadow .25s ease, color .25s ease, background .25s ease;
+  }
+  .marquee.turn-p1{ color: var(--p1); box-shadow: inset 0 0 0 2px var(--p1-dark), 0 0 20px var(--p1-glow); }
+  .marquee.turn-p2{ color: var(--p2); box-shadow: inset 0 0 0 2px var(--p2-dark), 0 0 20px var(--p2-glow); }
+  .marquee .sub{ display:block; font-size: 12px; font-weight:700; color: var(--ink-dim); text-transform:none; letter-spacing:0.2px; margin-top:2px; }
+
+  #board{
+    width:100%;
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 700px), (orientation: portrait){
+    #board{ grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .card{
+    aspect-ratio: 3/4;
+    perspective: 900px;
+  }
+  .card-inner{
+    position:relative;
+    width:100%; height:100%;
+    transition: transform .5s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .card.flipped .card-inner{ transform: rotateY(180deg); }
+  .card.matched{ visibility:hidden; pointer-events:none; }
+
+  .card-face{
+    position:absolute; inset:0;
+    border-radius: 12px;
+    display:flex; align-items:center; justify-content:center;
+    backface-visibility:hidden;
+    padding: 4px;
+    text-align:center;
+  }
+  .card-back{
+    background-color: var(--bg-panel);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%231f1d45'/%3E%3Ctext x='4' y='22' font-size='20' fill='%232dd9c4' opacity='0.35' font-family='Arial'%3E%C3%97%3C/text%3E%3Ctext x='32' y='48' font-size='20' fill='%23ff5d8f' opacity='0.3' font-family='Arial'%3E%C3%B7%3C/text%3E%3Ctext x='38' y='20' font-size='15' fill='%23ffd23f' opacity='0.28' font-family='Arial'%3E+%3C/text%3E%3Ctext x='8' y='52' font-size='15' fill='%23f5f3ff' opacity='0.16' font-family='Arial'%3E%E2%88%92%3C/text%3E%3C/svg%3E");
+    background-size: 60px 60px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(255,255,255,0.05);
+  }
+  .card-back::after{
+    content:'?';
+    font-family:'Baloo 2', sans-serif;
+    font-size: clamp(20px, 5vw, 30px);
+    font-weight: 700;
+    color: rgba(245,243,255,0.25);
+  }
+  .card-front{ transform: rotateY(180deg); flex-direction:column; gap:2px; }
+  .card-front.owner-1{ background: linear-gradient(145deg, var(--p1), var(--p1-dark)); color:#062825; box-shadow: 0 0 16px var(--p1-glow); }
+  .card-front.owner-2{ background: linear-gradient(145deg, var(--p2), var(--p2-dark)); color:#380316; box-shadow: 0 0 16px var(--p2-glow); }
+  .card-front .label{
+    font-family:'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: clamp(14px, 3.4vw, 22px);
+    line-height: 1.15;
+  }
+
+  .card:not(.flipped):not(.matched) .card-inner:hover{ transform: translateY(-2px) scale(1.03); }
+
+  #message-bar{
+    min-height: 22px;
+    margin-top: 14px;
+    font-weight: 800;
+    font-size: 14px;
+    text-align:center;
+    color: var(--ink-dim);
+    transition: color .2s ease;
+  }
+  #message-bar.msg-good{ color: var(--gold); }
+  #message-bar.msg-bad{ color: var(--ink-dim); }
+
+  .icon-btn{
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    background: var(--bg-panel);
+    color: var(--ink);
+    width: 36px; height:36px;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    z-index: 5;
+  }
+
+  /* ---------- ANSWER MODAL ---------- */
+  #answer-overlay{
+    position: fixed; inset:0;
+    background: rgba(10,9,26,0.82);
+    display:flex; align-items:center; justify-content:center;
+    z-index: 60;
+    padding: 20px;
+  }
+  .answer-card{
+    background: var(--bg-panel);
+    border-radius: 22px;
+    padding: 28px 26px 24px;
+    text-align:center;
+    max-width: 380px;
+    width:100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    border: 3px solid transparent;
+  }
+  .answer-card.owner-1{ border-color: var(--p1); box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 28px var(--p1-glow); }
+  .answer-card.owner-2{ border-color: var(--p2); box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 28px var(--p2-glow); }
+
+  .answer-card .prompt{ font-size: 13px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-dim); margin: 0 0 8px; }
+  .answer-card .equation{ font-family:'Baloo 2', sans-serif; font-weight: 800; font-size: clamp(30px, 8vw, 42px); margin: 0 0 18px; }
+
+  .timer-track{
+    width:100%; height: 10px; border-radius: 999px;
+    background: rgba(255,255,255,0.12);
+    overflow:hidden;
+    margin-bottom: 6px;
+  }
+  .timer-fill{
+    height:100%; width:100%;
+    background: linear-gradient(90deg, var(--gold), #ff9d3f);
+    border-radius: 999px;
+  }
+  .timer-count{ font-size: 13px; font-weight: 800; color: var(--ink-dim); margin: 0 0 18px; }
+
+  .answer-form{ display:flex; gap: 10px; }
+  #answer-input{
+    flex:1;
+    min-width:0;
+    font-family:'Baloo 2', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    text-align:center;
+    padding: 12px 8px;
+    border-radius: 12px;
+    border: 2px solid var(--bg-panel-light);
+    background: var(--bg-panel-light);
+    color: var(--ink);
+  }
+  #answer-input:focus{ outline:none; border-color: var(--gold); }
+  #answer-submit{
+    width: 56px;
+    border-radius: 12px;
+    background: var(--gold);
+    color: #201a05;
+    font-size: 26px;
+    font-weight: 800;
+    box-shadow: 0 5px 0 #b8891f;
+  }
+  #answer-submit:active{ transform: translateY(3px); box-shadow: 0 2px 0 #b8891f; }
+
+  @keyframes shake{
+    10%,90%{ transform: translateX(-2px); }
+    20%,80%{ transform: translateX(4px); }
+    30%,50%,70%{ transform: translateX(-8px); }
+    40%,60%{ transform: translateX(8px); }
+  }
+  .shake{ animation: shake 0.5s; }
+
+  /* ---------- WIN OVERLAY ---------- */
+  #win-overlay{
+    position: fixed; inset:0;
+    background: rgba(10,9,26,0.86);
+    display:flex; align-items:center; justify-content:center;
+    z-index: 70;
+    padding: 20px;
+  }
+  .win-card{
+    background: var(--bg-panel);
+    border-radius: 22px;
+    padding: 36px 30px;
+    text-align:center;
+    max-width: 420px;
+    width:100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    position:relative;
+    overflow:hidden;
+  }
+  .win-card h2{ font-size: clamp(26px,6vw,34px); margin: 6px 0 4px; }
+  .win-card p{ color: var(--ink-dim); font-weight:700; margin: 0 0 22px; }
+  #play-again-btn{
+    padding: 14px 28px;
+    border-radius: 999px;
+    background: var(--gold);
+    color: #201a05;
+    font-weight: 700;
+    font-size: 17px;
+    box-shadow: 0 6px 0 #b8891f;
+  }
+  #play-again-btn:active{ transform: translateY(3px); box-shadow: 0 3px 0 #b8891f; }
+
+  .confetti{
+    position:absolute;
+    top:-20px;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    pointer-events:none;
+    animation: fall linear forwards;
+  }
+  @keyframes fall{
+    to{ transform: translateY(420px) rotate(360deg); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ SETUP SCREEN ============ -->
+  <div id="setup-screen">
+    <div class="title-wrap">
+      <h1>Memory</h1>
+      <p>Times Tables Showdown</p>
+    </div>
+
+    <div class="setup-grid">
+      <div class="player-panel p1">
+        <div class="panel-head"><span class="dot"></span><h2>Player 1</h2></div>
+        <div class="name-input" id="p1Readout" style="display:flex; align-items:center;">Loading your profile…</div>
+      </div>
+      <div class="player-panel p2">
+        <div class="panel-head"><span class="dot"></span><h2>Player 2</h2></div>
+        <div id="p2LoginBox">
+          <p class="panel-sub">Your name</p>
+          <select class="name-input" id="p2NameSelect" style="width:100%;"><option value="">Loading roster…</option></select>
+          <p class="panel-sub">Your password</p>
+          <input type="password" class="name-input" id="p2Password" style="width:100%;" />
+          <div id="p2Err" style="color:#ff8a8a; font-size:12px; display:none; margin-top:6px;">That password didn't match — try again.</div>
+          <button type="button" id="p2GoBtn" style="margin-top:10px; padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-weight:700;">Join</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="start-btn" disabled>Pick both tables to start</button>
+
+    <div class="howto">
+      <strong>How to play:</strong> 24 cards are mixed face-down on the table &mdash; 12 for each player.
+      On your turn, flip one card. If it's your color, you have 8 seconds to type the correct answer and
+      keep the card. Get it wrong or run out of time and it flips back over &mdash; your turn ends either way.
+      Flip an opponent's card by mistake and your turn ends immediately, no answer needed. Clear all your
+      cards from the table first to win!
+    </div>
+  </div>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <div id="game-screen" class="hidden">
+    <div class="scoreboard">
+      <div class="score-chip p1" id="chip-1">
+        <span class="swatch"></span>
+        <span class="name" id="chip-name-1">Player 1</span>
+        <span class="count" id="chip-count-1">12 left</span>
+      </div>
+      <div class="score-chip p2" id="chip-2">
+        <span class="swatch"></span>
+        <span class="name" id="chip-name-2">Player 2</span>
+        <span class="count" id="chip-count-2">12 left</span>
+      </div>
+    </div>
+
+    <div class="marquee" id="marquee">
+      Player 1's turn
+      <span class="sub" id="marquee-sub">Flip a card</span>
+    </div>
+
+    <div id="board"></div>
+    <div id="message-bar"></div>
+  </div>
+
+  <button class="icon-btn hidden" id="reset-btn" title="Restart">↺</button>
+</div>
+
+<!-- ============ ANSWER MODAL ============ -->
+<div id="answer-overlay" class="hidden">
+  <div class="answer-card" id="answer-card">
+    <p class="prompt" id="answer-prompt">Solve it to keep the card!</p>
+    <h2 class="equation" id="answer-equation">6 &times; 7</h2>
+    <div class="timer-track"><div class="timer-fill" id="timer-fill"></div></div>
+    <p class="timer-count" id="timer-count">8 seconds left</p>
+    <div class="answer-form">
+      <input id="answer-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="?">
+      <button id="answer-submit" type="button">&#10003;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ WIN OVERLAY ============ -->
+<div id="win-overlay" class="hidden">
+  <div class="win-card">
+    <h2 id="win-title">Player 1 wins!</h2>
+    <p id="win-sub">Cleared all 12 cards first.</p>
+    <button id="play-again-btn">Play again</button>
+  </div>
+</div>
+
+<script type="module">
+import { levelInfo, generateQuestion } from "../js/levels.js";
+import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
+
+const classId = sessionStorage.getItem("ttr_classId");
+if (!classId) window.location.href = "../index.html";
+const p1Uid = sessionStorage.getItem("ttr_uid");
+const p1Name = sessionStorage.getItem("ttr_name");
+const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
+let p2Name = null, p2Level = null;
+
+document.getElementById('p1Readout').textContent = `${p1Name} — ${levelInfo(p1Level).label}`;
+getClassRoster(classId).then(roster => {
+  const sel = document.getElementById('p2NameSelect');
+  const options = roster.filter(s => s.uid !== p1Uid);
+  sel.innerHTML = '<option value="">Select your name</option>' +
+    options.map(s => `<option value="${s.email}">${s.name}</option>`).join('');
+});
+document.getElementById('p2GoBtn').addEventListener('click', async () => {
+  const email = document.getElementById('p2NameSelect').value;
+  const password = document.getElementById('p2Password').value;
+  const errEl = document.getElementById('p2Err');
+  errEl.style.display = 'none';
+  if (!email || !password) return;
+  try {
+    const profile = await studentLoginSecondPlayer(email, password);
+    p2Name = profile.name;
+    p2Level = profile.level || 1;
+    document.getElementById('p2LoginBox').innerHTML =
+      `<div class="name-input" style="display:flex; align-items:center;">${profile.name} — ${levelInfo(p2Level).label} ✔️</div>`;
+    window.__memoryRefreshStart && window.__memoryRefreshStart();
+  } catch (err) {
+    errEl.style.display = 'block';
+  }
+});
+(function(){
+  "use strict";
+
+  // ---------------- CONFIG ----------------
+  var PLAYER = {
+    1: { color: 'p1', name: 'Player 1' },
+    2: { color: 'p2', name: 'Player 2' }
+  };
+  var CARDS_PER_PLAYER = 12;
+  var OPPONENT_FLIP_DELAY = 900;   // ms an opponent's card stays visible before flipping back
+  var ANSWER_TIME = 8;             // seconds allowed to answer
+
+  // ---------------- STATE ----------------
+  var chosenTable = { 1: null, 2: null };
+  var deck = [];
+  var currentPlayer = 1;
+  var locked = false;
+  var matchedCount = { 1: 0, 2: 0 };
+  var boardEl = document.getElementById('board');
+
+  var activeIdx = null;
+  var timerInterval = null;
+  var secondsLeft = ANSWER_TIME;
+
+  // ---------------- SETUP SCREEN ----------------
+  function refreshStartButton(){
+    var startBtn = document.getElementById('start-btn');
+    if (p2Level !== null){
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start game';
+    } else {
+      startBtn.disabled = true;
+      startBtn.textContent = 'Waiting for Player 2 to log in';
+    }
+  }
+  window.__memoryRefreshStart = refreshStartButton;
+  refreshStartButton();
+
+  document.getElementById('start-btn').addEventListener('click', function(){
+    PLAYER[1].name = p1Name;
+    PLAYER[2].name = p2Name || 'Player 2';
+    startGame();
+  });
+
+  // ---------------- DECK ----------------
+  function buildDeck(){
+    var cards = [];
+    var levelByPlayer = { 1: p1Level, 2: p2Level };
+    [1, 2].forEach(function(playerNum){
+      var level = levelByPlayer[playerNum];
+      for (var i = 0; i < CARDS_PER_PLAYER; i++){
+        var q = generateQuestion(level);
+        cards.push({
+          owner: playerNum,
+          label: q.text,
+          answer: q.answer
+        });
+      }
+    });
+    return shuffle(cards);
+  }
+
+  function shuffle(arr){
+    for (var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  // ---------------- GAME START ----------------
+  function startGame(){
+    deck = buildDeck();
+    currentPlayer = 1;
+    locked = false;
+    matchedCount = { 1: 0, 2: 0 };
+    activeIdx = null;
+
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
+    document.getElementById('reset-btn').classList.remove('hidden');
+    document.getElementById('win-overlay').classList.add('hidden');
+    document.getElementById('answer-overlay').classList.add('hidden');
+
+    document.getElementById('chip-name-1').textContent = PLAYER[1].name;
+    document.getElementById('chip-name-2').textContent = PLAYER[2].name;
+
+    renderBoard();
+    updateScoreboard();
+    updateMarquee();
+    setMessage('', '');
+  }
+
+  function renderBoard(){
+    boardEl.innerHTML = '';
+    deck.forEach(function(card, idx){
+      var cardEl = document.createElement('div');
+      cardEl.className = 'card';
+      cardEl.setAttribute('data-idx', idx);
+      cardEl.setAttribute('role', 'button');
+      cardEl.setAttribute('tabindex', '0');
+      cardEl.innerHTML =
+        '<div class="card-inner">' +
+          '<div class="card-face card-back"></div>' +
+          '<div class="card-face card-front owner-' + card.owner + '">' +
+            '<span class="label">' + card.label + '</span>' +
+          '</div>' +
+        '</div>';
+      boardEl.appendChild(cardEl);
+    });
+  }
+
+  boardEl.addEventListener('click', function(e){
+    var target = e.target.closest('.card');
+    if (!target) return;
+    handleCardClick(parseInt(target.getAttribute('data-idx'), 10));
+  });
+  boardEl.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var target = e.target.closest('.card');
+    if (!target) return;
+    e.preventDefault();
+    handleCardClick(parseInt(target.getAttribute('data-idx'), 10));
+  });
+
+  // ---------------- CORE GAME LOGIC ----------------
+  function handleCardClick(idx){
+    if (locked) return;
+    var cardEl = boardEl.children[idx];
+    if (cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) return;
+
+    var card = deck[idx];
+    flipUp(idx);
+    locked = true;
+
+    if (card.owner !== currentPlayer){
+      setMessage("That's " + PLAYER[card.owner].name + "'s card \u2014 turn over!", 'bad');
+      setTimeout(function(){
+        flipDown(idx);
+        switchTurn();
+        locked = false;
+      }, OPPONENT_FLIP_DELAY);
+    } else {
+      openAnswerModal(idx);
+    }
+  }
+
+  function flipUp(idx){ boardEl.children[idx].classList.add('flipped'); }
+  function flipDown(idx){ boardEl.children[idx].classList.remove('flipped'); }
+  function markMatched(idx){ boardEl.children[idx].classList.add('matched'); }
+
+  function switchTurn(){
+    currentPlayer = (currentPlayer === 1) ? 2 : 1;
+    updateMarquee();
+  }
+
+  function updateMarquee(){
+    var marquee = document.getElementById('marquee');
+    marquee.className = 'marquee turn-p' + currentPlayer;
+    marquee.innerHTML = PLAYER[currentPlayer].name + "'s turn" +
+      '<span class="sub" id="marquee-sub">Flip a card</span>';
+
+    document.getElementById('chip-1').classList.toggle('active', currentPlayer === 1);
+    document.getElementById('chip-2').classList.toggle('active', currentPlayer === 2);
+  }
+
+  function updateScoreboard(){
+    document.getElementById('chip-count-1').textContent = (CARDS_PER_PLAYER - matchedCount[1]) + ' left';
+    document.getElementById('chip-count-2').textContent = (CARDS_PER_PLAYER - matchedCount[2]) + ' left';
+  }
+
+  function setMessage(text, kind){
+    var bar = document.getElementById('message-bar');
+    bar.textContent = text;
+    bar.className = kind === 'good' ? 'msg-good' : (kind === 'bad' ? 'msg-bad' : '');
+  }
+
+  // ---------------- ANSWER MODAL ----------------
+  var answerOverlay = document.getElementById('answer-overlay');
+  var answerCardEl = document.getElementById('answer-card');
+  var answerEquationEl = document.getElementById('answer-equation');
+  var answerPromptEl = document.getElementById('answer-prompt');
+  var answerInput = document.getElementById('answer-input');
+  var answerSubmit = document.getElementById('answer-submit');
+  var timerFill = document.getElementById('timer-fill');
+  var timerCount = document.getElementById('timer-count');
+
+  function openAnswerModal(idx){
+    activeIdx = idx;
+    var card = deck[idx];
+
+    answerCardEl.className = 'answer-card owner-' + card.owner;
+    answerPromptEl.textContent = PLAYER[card.owner].name + ', solve it to keep the card!';
+    answerEquationEl.textContent = card.label;
+    answerInput.value = '';
+
+    answerOverlay.classList.remove('hidden');
+
+    // reset & start timer bar
+    timerFill.style.transition = 'none';
+    timerFill.style.width = '100%';
+    secondsLeft = ANSWER_TIME;
+    timerCount.textContent = secondsLeft + ' seconds left';
+    // force reflow so the transition below actually animates
+    void timerFill.offsetWidth;
+    timerFill.style.transition = 'width ' + ANSWER_TIME + 's linear';
+    timerFill.style.width = '0%';
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(function(){
+      secondsLeft--;
+      if (secondsLeft > 0){
+        timerCount.textContent = secondsLeft + ' seconds left';
+      } else {
+        timerCount.textContent = "Time's up!";
+        clearInterval(timerInterval);
+        handleTimeout();
+      }
+    }, 1000);
+
+    setTimeout(function(){ answerInput.focus(); }, 150);
+  }
+
+  function closeAnswerModal(){
+    clearInterval(timerInterval);
+    answerOverlay.classList.add('hidden');
+    activeIdx = null;
+  }
+
+  function submitAnswer(){
+    if (activeIdx === null) return;
+    var card = deck[activeIdx];
+    var value = answerInput.value.trim();
+    if (value === '') return;
+
+    if (parseInt(value, 10) === card.answer){
+      var idx = activeIdx;
+      closeAnswerModal();
+      markMatched(idx);
+      matchedCount[currentPlayer]++;
+      updateScoreboard();
+      setMessage('Correct! ' + PLAYER[currentPlayer].name + ' goes again.', 'good');
+      locked = false;
+
+      if (matchedCount[currentPlayer] === CARDS_PER_PLAYER){
+        declareWinner(currentPlayer);
+      }
+    } else {
+      answerCardEl.classList.remove('shake');
+      void answerCardEl.offsetWidth;
+      answerCardEl.classList.add('shake');
+      answerInput.value = '';
+      answerInput.focus();
+    }
+  }
+
+  function handleTimeout(){
+    var idx = activeIdx;
+    closeAnswerModal();
+    setMessage("Time's up \u2014 turn over!", 'bad');
+    flipDown(idx);
+    switchTurn();
+    locked = false;
+  }
+
+  answerSubmit.addEventListener('click', submitAnswer);
+  answerInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      submitAnswer();
+    }
+  });
+
+  // ---------------- WIN ----------------
+  function declareWinner(playerNum){
+    locked = true;
+    var overlay = document.getElementById('win-overlay');
+    document.getElementById('win-title').textContent = PLAYER[playerNum].name + ' wins!';
+    document.getElementById('win-sub').textContent = 'Cleared all ' + CARDS_PER_PLAYER + ' cards first.';
+    overlay.classList.remove('hidden');
+    launchConfetti();
+  }
+
+  function launchConfetti(){
+    var winCard = document.querySelector('.win-card');
+    var symbols = ['\u00D7', '\u00F7', '+', '\u2212', '='];
+    var colors = ['var(--p1)', 'var(--p2)', 'var(--gold)'];
+    for (var i = 0; i < 26; i++){
+      (function(){
+        var span = document.createElement('span');
+        span.className = 'confetti';
+        span.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        span.style.left = Math.random() * 100 + '%';
+        span.style.fontSize = (14 + Math.random() * 18) + 'px';
+        span.style.color = colors[Math.floor(Math.random() * colors.length)];
+        span.style.animationDuration = (1.4 + Math.random() * 1.2) + 's';
+        span.style.animationDelay = (Math.random() * 0.6) + 's';
+        winCard.appendChild(span);
+      })();
+    }
+  }
+
+  // ---------------- RESET ----------------
+  function resetToSetup(){
+    clearInterval(timerInterval);
+    document.getElementById('answer-overlay').classList.add('hidden');
+    document.getElementById('win-overlay').classList.add('hidden');
+    document.querySelectorAll('.confetti').forEach(function(el){ el.remove(); });
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('reset-btn').classList.add('hidden');
+    document.getElementById('setup-screen').classList.remove('hidden');
+
+    refreshStartButton();
+  }
+
+  document.getElementById('play-again-btn').addEventListener('click', resetToSetup);
+  document.getElementById('reset-btn').addEventListener('click', function(){
+    if (confirm('Restart the game and pick new times tables?')) resetToSetup();
+  });
+
+})();
+</script>
+
+</body>
+</html>

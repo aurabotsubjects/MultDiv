@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Bubble Pop - 2 Player Multiplication Game</title>
+    <style>
+        :root {
+            --p1-color: #3b82f6;
+            --p1-light: #93c5fd;
+            --p1-bg: rgba(59, 130, 246, 0.15);
+            --p2-color: #ec4899;
+            --p2-light: #fbcfe8;
+            --p2-bg: rgba(236, 72, 153, 0.15);
+            --bg-grad-1: #0f172a;
+            --bg-grad-2: #1e1b4b;
+            --card-bg: rgba(255, 255, 255, 0.07);
+            --text-light: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Screen Management */
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 1100px;
+            height: 90vh;
+            max-height: 800px;
+            padding: 20px;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* MENU SCREEN */
+        #menu-screen {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .title-container {
+            margin-bottom: 25px;
+        }
+
+        .title-container h1 {
+            font-size: 3rem;
+            background: linear-gradient(to right, #60a5fa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            margin-bottom: 5px;
+            font-weight: 800;
+        }
+
+        .title-container p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .players-setup {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 750px;
+            margin-bottom: 25px;
+        }
+
+        .player-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: left;
+        }
+
+        .player-card.p1 { border-color: rgba(59, 130, 246, 0.4); }
+        .player-card.p2 { border-color: rgba(236, 72, 153, 0.4); }
+
+        .player-card h2 {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-card.p1 h2 { color: #60a5fa; }
+        .player-card.p2 h2 { color: #f472b6; }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"], input[type="password"], select {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+            border-color: #38bdf8;
+        }
+
+        select option {
+            background: #1e293b;
+            color: white;
+        }
+
+        .settings-bar {
+            display: flex;
+            gap: 20px;
+            background: var(--card-bg);
+            padding: 12px 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 25px;
+            align-items: center;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+            padding: 14px 45px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 14px 30px rgba(16, 185, 129, 0.6);
+        }
+
+        /* GAME SCREEN */
+        #game-screen {
+            padding: 10px;
+        }
+
+        /* HUD Top Bar */
+        .hud {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .player-hud {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 2px solid transparent;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .player-hud.p1 {
+            border-color: var(--p1-color);
+            background: var(--p1-bg);
+        }
+
+        .player-hud.p2 {
+            border-color: var(--p2-color);
+            background: var(--p2-bg);
+        }
+
+        .hud-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hud-name {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        .hud-score {
+            font-size: 1.6rem;
+            font-weight: 800;
+        }
+
+        .equation-box {
+            background: rgba(0,0,0,0.4);
+            padding: 6px 16px;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .p1 .equation-box { color: #93c5fd; }
+        .p2 .equation-box { color: #fbcfe8; }
+
+        .timer-box {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .timer-val {
+            font-size: 1.5rem;
+            color: #f59e0b;
+        }
+
+        .timer-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+        }
+
+        /* Bubble Play Area */
+        .game-canvas {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        /* Bubbles */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.3), inset 5px 5px 15px rgba(255,255,255,0.4), 0 8px 20px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease;
+            backdrop-filter: blur(2px);
+        }
+
+        .bubble:hover {
+            transform: scale(1.08);
+        }
+
+        .bubble:active {
+            transform: scale(0.92);
+        }
+
+        /* Bubble Types */
+        .bubble.p1-type {
+            background: radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8);
+            border: 2px solid #93c5fd;
+        }
+
+        .bubble.p2-type {
+            background: radial-gradient(circle at 30% 30%, #f472b6, #be185d);
+            border: 2px solid #fbcfe8;
+        }
+
+        .bubble.shared-type {
+            background: radial-gradient(circle at 30% 30%, #c084fc, #6b21a8);
+            border: 2px solid #e9d5ff;
+        }
+
+        .bubble.decoy-type {
+            background: radial-gradient(circle at 30% 30%, #94a3b8, #334155);
+            border: 2px solid #cbd5e1;
+        }
+
+        .bubble.bonus-type {
+            background: radial-gradient(circle at 30% 30%, #fde047, #ca8a04);
+            border: 2px solid #fef08a;
+            color: #422006;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.08); }
+        }
+
+        /* Floating Score Popups */
+        .score-popup {
+            position: absolute;
+            font-size: 1.4rem;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            z-index: 100;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+        }
+
+        /* GAME OVER SCREEN */
+        #gameover-screen {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .winner-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            padding: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            max-width: 550px;
+            width: 100%;
+        }
+
+        .winner-title {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+
+        .winner-subtitle {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+
+        .final-scores {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .final-score-box {
+            padding: 15px;
+            border-radius: 16px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .final-score-box.p1 { border: 2px solid var(--p1-color); }
+        .final-score-box.p2 { border: 2px solid var(--p2-color); }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .action-btn {
+            padding: 12px 28px;
+            border-radius: 30px;
+            border: none;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+
+        .action-btn.secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MENU SCREEN -->
+    <div id="menu-screen" class="screen active">
+        <div class="title-container">
+            <h1>Math Bubble Pop</h1>
+            <p>2-Player Multiplication Duel</p>
+        </div>
+
+        <div class="players-setup">
+            <!-- Player 1: auto from login -->
+            <div class="player-card p1">
+                <h2>🔵 Player 1</h2>
+                <div class="form-group">
+                    <label>You</label>
+                    <div id="p1Readout" style="padding:10px 0; font-weight:bold;">Loading your profile…</div>
+                </div>
+            </div>
+
+            <!-- Player 2: logs in here -->
+            <div class="player-card p2">
+                <h2>🔴 Player 2</h2>
+                <div id="p2LoginBox">
+                    <div class="form-group">
+                        <label>Your name</label>
+                        <select id="p2NameSelect"><option value="">Loading roster…</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Your password</label>
+                        <input type="password" id="p2Password" />
+                    </div>
+                    <div id="p2Err" class="error-text" style="display:none; color:#f87171; font-size:0.85rem;">That password didn't match — try again.</div>
+                    <button type="button" class="start-btn" id="p2GoBtn" style="padding:10px 20px; font-size:1rem;">Join</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-bar">
+            <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                <label style="margin: 0;">Timer:</label>
+                <select id="game-duration">
+                    <option value="30">30 Seconds</option>
+                    <option value="60" selected>60 Seconds</option>
+                    <option value="90">90 Seconds</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                <label style="margin: 0;">Speed:</label>
+                <select id="game-speed">
+                    <option value="1">Slow</option>
+                    <option value="1.5" selected>Normal</option>
+                    <option value="2.2">Fast</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="start-btn" id="start-btn" disabled style="opacity:0.4;">Start Game</button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="screen">
+        <div class="hud">
+            <!-- Player 1 HUD -->
+            <div class="player-hud p1">
+                <div class="hud-info">
+                    <span class="hud-name" id="hud-p1-name">Player 1</span>
+                    <span class="hud-score" id="hud-p1-score">0</span>
+                </div>
+                <div class="equation-box" id="hud-p1-eq">3 × 4 = ?</div>
+            </div>
+
+            <!-- Timer -->
+            <div class="timer-box">
+                <span class="timer-val" id="hud-timer">60</span>
+                <span class="timer-label">SEC</span>
+            </div>
+
+            <!-- Player 2 HUD -->
+            <div class="player-hud p2">
+                <div class="equation-box" id="hud-p2-eq">5 × 7 = ?</div>
+                <div class="hud-info" style="text-align: right;">
+                    <span class="hud-name" id="hud-p2-name">Player 2</span>
+                    <span class="hud-score" id="hud-p2-score">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Game Area -->
+        <div class="game-canvas" id="game-canvas"></div>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="gameover-screen" class="screen">
+        <div class="winner-card">
+            <h1 class="winner-title" id="winner-title">🎉 Player 1 Wins!</h1>
+            <p class="winner-subtitle" id="winner-subtitle">Great job popping those bubbles!</p>
+
+            <div class="final-scores">
+                <div class="final-score-box p1">
+                    <div id="final-p1-name" style="color: #60a5fa; font-weight: bold;">Player 1</div>
+                    <div id="final-p1-score" style="font-size: 2rem; font-weight: 800;">0</div>
+                </div>
+                <div class="final-score-box p2">
+                    <div id="final-p2-name" style="color: #f472b6; font-weight: bold;">Player 2</div>
+                    <div id="final-p2-score" style="font-size: 2rem; font-weight: 800;">0</div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="action-btn primary" id="restart-btn">Play Again</button>
+                <button class="action-btn secondary" id="menu-btn">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { levelInfo, generateQuestion } from "../js/levels.js";
+        import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
+
+        const classId = sessionStorage.getItem("ttr_classId");
+        if (!classId) window.location.href = "../index.html";
+        const p1Uid = sessionStorage.getItem("ttr_uid");
+        const p1Name = sessionStorage.getItem("ttr_name");
+        const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
+        let p2Level = null;
+
+        document.getElementById('p1Readout').textContent = `${p1Name} — ${levelInfo(p1Level).label}`;
+        getClassRoster(classId).then(roster => {
+            const sel = document.getElementById('p2NameSelect');
+            const options = roster.filter(s => s.uid !== p1Uid);
+            sel.innerHTML = '<option value="">Select your name</option>' +
+                options.map(s => `<option value="${s.email}">${s.name}</option>`).join('');
+        });
+        document.getElementById('p2GoBtn').addEventListener('click', async () => {
+            const email = document.getElementById('p2NameSelect').value;
+            const password = document.getElementById('p2Password').value;
+            const errEl = document.getElementById('p2Err');
+            errEl.style.display = 'none';
+            if (!email || !password) return;
+            try {
+                const profile = await studentLoginSecondPlayer(email, password);
+                p2Level = profile.level || 1;
+                document.getElementById('p2LoginBox').innerHTML =
+                    `<div style="padding:10px 0; font-weight:bold;">${profile.name} — ${levelInfo(p2Level).label} ✔️</div>`;
+                state.p2.name = profile.name;
+                const startBtn = document.getElementById('start-btn');
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+            } catch (err) {
+                errEl.style.display = 'block';
+            }
+        });
+        // Sound Synthesis via Web Audio API
+        class SoundManager {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playPop(freq = 400, type = 'sine') {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.8, this.ctx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playWrong() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.15);
+
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playFanfare() {
+                if (!this.ctx) return;
+                const notes = [261.63, 329.63, 392.00, 523.25];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => this.playPop(freq, 'triangle'), i * 120);
+                });
+            }
+        }
+
+        const soundManager = new SoundManager();
+
+        // Game State
+        const state = {
+            p1: { name: 'Player 1', level: 1, score: 0, currentFactor: 0, answer: 0 },
+            p2: { name: 'Player 2', level: 1, score: 0, currentFactor: 0, answer: 0 },
+            duration: 60,
+            timeLeft: 60,
+            speedMultiplier: 1.5,
+            bubbles: [],
+            gameInterval: null,
+            timerInterval: null,
+            spawnInterval: null,
+            isPlaying: false
+        };
+
+        // DOM Elements
+        const screens = {
+            menu: document.getElementById('menu-screen'),
+            game: document.getElementById('game-screen'),
+            gameover: document.getElementById('gameover-screen')
+        };
+
+        const canvas = document.getElementById('game-canvas');
+
+        // Switch Screens
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.remove('active'));
+            screens[screenName].classList.add('active');
+        }
+
+        // Generate New Target Equation for Player
+        function generateEquation(playerNum) {
+            const p = playerNum === 1 ? state.p1 : state.p2;
+            const q = generateQuestion(p.level);
+            p.answer = q.answer;
+
+            const eqElement = document.getElementById(`hud-p${playerNum}-eq`);
+            eqElement.textContent = `${q.text} = ?`;
+        }
+
+        // Bubble Class
+        class Bubble {
+            constructor(val, isP1Target, isP2Target) {
+                this.val = val;
+                this.radius = Math.floor(Math.random() * 15) + 32; // Size 32-47px radius
+                this.x = Math.random() * (canvas.clientWidth - this.radius * 2) + this.radius;
+                this.y = canvas.clientHeight + this.radius + 10;
+                this.speedY = (Math.random() * 1.5 + 1) * state.speedMultiplier;
+                this.speedX = (Math.random() - 0.5) * 1.2;
+
+                this.el = document.createElement('div');
+                this.el.className = 'bubble';
+                this.el.textContent = val;
+
+                // Color coding type
+                if (isP1Target && isP2Target) {
+                    this.el.classList.add('shared-type');
+                } else if (isP1Target) {
+                    this.el.classList.add('p1-type');
+                } else if (isP2Target) {
+                    this.el.classList.add('p2-type');
+                } else {
+                    this.el.classList.add('decoy-type');
+                }
+
+                this.updatePosition();
+
+                this.el.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    this.pop();
+                });
+
+                canvas.appendChild(this.el);
+            }
+
+            updatePosition() {
+                this.el.style.width = `${this.radius * 2}px`;
+                this.el.style.height = `${this.radius * 2}px`;
+                this.el.style.left = `${this.x - this.radius}px`;
+                this.el.style.top = `${this.y - this.radius}px`;
+            }
+
+            move() {
+                this.y -= this.speedY;
+                this.x += this.speedX;
+
+                // Wall bouncing
+                if (this.x - this.radius <= 0 || this.x + this.radius >= canvas.clientWidth) {
+                    this.speedX *= -1;
+                }
+
+                this.updatePosition();
+            }
+
+            pop() {
+                if (!state.isPlaying) return;
+
+                let hit = false;
+
+                // Check P1 match
+                if (this.val === state.p1.answer) {
+                    state.p1.score += 10;
+                    showScorePopup(this.x, this.y, '+10', '#60a5fa');
+                    soundManager.playPop(523.25);
+                    generateEquation(1);
+                    hit = true;
+                }
+
+                // Check P2 match
+                if (this.val === state.p2.answer) {
+                    state.p2.score += 10;
+                    showScorePopup(this.x, this.y, '+10', '#f472b6');
+                    soundManager.playPop(659.25);
+                    generateEquation(2);
+                    hit = true;
+                }
+
+                // Incorrect Bubble
+                if (!hit) {
+                    soundManager.playWrong();
+                    showScorePopup(this.x, this.y, '-2', '#ef4444');
+                    // Penalty small
+                    state.p1.score = Math.max(0, state.p1.score - 1);
+                    state.p2.score = Math.max(0, state.p2.score - 1);
+                }
+
+                updateScores();
+                this.destroy();
+            }
+
+            destroy() {
+                if (this.el && this.el.parentNode) {
+                    this.el.parentNode.removeChild(this.el);
+                }
+                const index = state.bubbles.indexOf(this);
+                if (index > -1) {
+                    state.bubbles.splice(index, 1);
+                }
+            }
+        }
+
+        function showScorePopup(x, y, text, color) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = text;
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+            popup.style.color = color;
+            canvas.appendChild(popup);
+
+            setTimeout(() => {
+                if (popup.parentNode) popup.parentNode.removeChild(popup);
+            }, 800);
+        }
+
+        function spawnBubble() {
+            if (!state.isPlaying) return;
+
+            // Pick candidate value
+            const rand = Math.random();
+            let val;
+            let isP1 = false;
+            let isP2 = false;
+
+            if (rand < 0.35) {
+                // Spawn Player 1 target
+                val = state.p1.answer;
+                isP1 = true;
+            } else if (rand < 0.70) {
+                // Spawn Player 2 target
+                val = state.p2.answer;
+                isP2 = true;
+            } else {
+                // Decoy value from a real question at either player's level,
+                // so decoys look plausible whether the level is ×, ÷, or mixed
+                const decoyLevel = Math.random() < 0.5 ? state.p1.level : state.p2.level;
+                val = generateQuestion(decoyLevel).answer;
+            }
+
+            // Check if it matches active targets
+            if (val === state.p1.answer) isP1 = true;
+            if (val === state.p2.answer) isP2 = true;
+
+            state.bubbles.push(new Bubble(val, isP1, isP2));
+        }
+
+        function updateScores() {
+            document.getElementById('hud-p1-score').textContent = state.p1.score;
+            document.getElementById('hud-p2-score').textContent = state.p2.score;
+        }
+
+        function startGame() {
+            if (!p2Level) return; // Player 2 hasn't logged in yet
+            soundManager.init();
+
+            state.p1.name = p1Name;
+            state.p1.level = p1Level;
+            state.p1.score = 0;
+
+            state.p2.level = p2Level;
+            state.p2.score = 0;
+
+            state.duration = parseInt(document.getElementById('game-duration').value, 10);
+            state.timeLeft = state.duration;
+            state.speedMultiplier = parseFloat(document.getElementById('game-speed').value);
+
+            // Set HUD
+            document.getElementById('hud-p1-name').textContent = state.p1.name;
+            document.getElementById('hud-p2-name').textContent = state.p2.name;
+            document.getElementById('hud-timer').textContent = state.timeLeft;
+            updateScores();
+
+            // Clear old bubbles
+            canvas.innerHTML = '';
+            state.bubbles = [];
+
+            // Generate initial targets
+            generateEquation(1);
+            generateEquation(2);
+
+            showScreen('game');
+            state.isPlaying = true;
+
+            // Start Game Loop
+            state.gameInterval = setInterval(() => {
+                // Move bubbles
+                for (let i = state.bubbles.length - 1; i >= 0; i--) {
+                    const b = state.bubbles[i];
+                    b.move();
+                    // Remove if out of top bound
+                    if (b.y + b.radius < 0) {
+                        b.destroy();
+                    }
+                }
+            }, 1000 / 60);
+
+            // Spawn loop
+            state.spawnInterval = setInterval(spawnBubble, 800 / state.speedMultiplier);
+
+            // Initial batch of bubbles
+            for (let i = 0; i < 4; i++) {
+                setTimeout(spawnBubble, i * 200);
+            }
+
+            // Countdown Timer
+            state.timerInterval = setInterval(() => {
+                state.timeLeft--;
+                document.getElementById('hud-timer').textContent = state.timeLeft;
+
+                if (state.timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            state.isPlaying = false;
+            clearInterval(state.gameInterval);
+            clearInterval(state.spawnInterval);
+            clearInterval(state.timerInterval);
+
+            // Set GameOver Screen Details
+            document.getElementById('final-p1-name').textContent = state.p1.name;
+            document.getElementById('final-p1-score').textContent = state.p1.score;
+            document.getElementById('final-p2-name').textContent = state.p2.name;
+            document.getElementById('final-p2-score').textContent = state.p2.score;
+
+            const title = document.getElementById('winner-title');
+            const subtitle = document.getElementById('winner-subtitle');
+
+            if (state.p1.score > state.p2.score) {
+                title.textContent = `🎉 ${state.p1.name} Wins!`;
+                title.style.color = '#60a5fa';
+                subtitle.textContent = `Outscored ${state.p2.name} by ${state.p1.score - state.p2.score} points!`;
+            } else if (state.p2.score > state.p1.score) {
+                title.textContent = `🎉 ${state.p2.name} Wins!`;
+                title.style.color = '#f472b6';
+                subtitle.textContent = `Outscored ${state.p1.name} by ${state.p2.score - state.p1.score} points!`;
+            } else {
+                title.textContent = `🤝 It's a Tie!`;
+                title.style.color = '#f59e0b';
+                subtitle.textContent = `Both players scored ${state.p1.score} points!`;
+            }
+
+            soundManager.playFanfare();
+            showScreen('gameover');
+        }
+
+        // Event Listeners
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('restart-btn').addEventListener('click', startGame);
+        document.getElementById('menu-btn').addEventListener('click', () => showScreen('menu'));
+    </script>
+</body>
+</html>

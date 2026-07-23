@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Break the Bank — Times Tables Vault Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #10121b;
+    --navy-2: #191d2c;
+    --navy-3: #232842;
+    --brass: #e3ac48;
+    --brass-light: #f7d585;
+    --brass-dark: #96701f;
+    --money: #2fae6d;
+    --money-dark: #1c7a4a;
+    --alarm: #ea4b3c;
+    --alarm-dark: #a52c22;
+    --paper: #f3e8c9;
+    --paper-2: #e8dab0;
+    --chrome: #c7ced9;
+    --chrome-dark: #7c8497;
+    --chrome-darker: #4b5164;
+    --ink: #232030;
+    font-size: 16px;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(ellipse at 50% -10%, #262c47 0%, var(--navy-2) 45%, var(--navy) 100%);
+    font-family: 'Nunito', sans-serif;
+    color: #f4f1e8;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+
+  .display-font{ font-family: 'Fredoka', sans-serif; }
+
+  #app{ min-height: 100vh; width:100%; position: relative; }
+
+  /* Ambient vault-floor texture */
+  body::before{
+    content:"";
+    position: fixed; inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 34px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 34px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .screen{
+    display:none;
+    min-height: 100vh;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    padding: 18px;
+  }
+  .screen.active{ display:flex; flex-direction: column; align-items: center; }
+
+  /* ---------- Buttons ---------- */
+  .btn-primary{
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 1.35rem;
+    letter-spacing: 0.03em;
+    color: #2a1b04;
+    background: linear-gradient(180deg, var(--brass-light), var(--brass) 55%, var(--brass-dark));
+    border: none;
+    border-radius: 999px;
+    padding: 16px 46px;
+    box-shadow: 0 6px 0 var(--brass-dark), 0 14px 24px rgba(0,0,0,0.45);
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.2s;
+  }
+  .btn-primary:active{ transform: translateY(4px); box-shadow: 0 2px 0 var(--brass-dark), 0 6px 14px rgba(0,0,0,0.4); }
+  .btn-primary:disabled{ opacity: 0.35; cursor: not-allowed; box-shadow: 0 6px 0 rgba(150,112,31,0.4); }
+
+  /* ================= SETUP SCREEN ================= */
+  #setup-screen{ justify-content: center; }
+  .setup-card{
+    max-width: 920px; width:100%;
+    text-align: center;
+    display:flex; flex-direction: column; align-items:center;
+    gap: 8px;
+    padding: 20px 10px 40px;
+  }
+  .logo{
+    font-size: clamp(2.4rem, 8vw, 4.4rem);
+    margin: 6px 0 0;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    background: linear-gradient(180deg, var(--brass-light), var(--brass) 60%, var(--brass-dark));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 3px 0 rgba(0,0,0,0.5));
+    line-height: 1.0;
+  }
+  .logo span{ opacity: 0.75; font-size: 0.55em; vertical-align: middle; }
+  .tagline{
+    color: #b9c0d6; font-weight: 700; font-size: 1.05rem;
+    margin: 2px 0 26px;
+    letter-spacing: 0.02em;
+  }
+  .setup-players{
+    display:flex; gap: 22px; width: 100%;
+    flex-wrap: wrap; justify-content: center;
+    margin-bottom: 30px;
+  }
+  .setup-player{
+    flex: 1 1 360px; max-width: 420px;
+    background: linear-gradient(180deg, var(--navy-3), var(--navy-2));
+    border: 2px solid rgba(227,172,72,0.25);
+    border-radius: 22px;
+    padding: 20px 18px 24px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .setup-player h2{
+    font-family: 'Fredoka', sans-serif;
+    margin: 0 0 2px;
+    font-size: 1.5rem;
+    color: var(--brass-light);
+  }
+  .setup-player p{
+    margin: 0 0 16px;
+    color: #9aa2bd;
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+  .table-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .table-btn{
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    padding: 14px 0;
+    border-radius: 14px;
+    border: 2px solid rgba(199,206,217,0.25);
+    background: linear-gradient(180deg, #2a3050, #1c2036);
+    color: #dfe3f2;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .table-btn:active{ transform: scale(0.95); }
+  .table-btn.selected{
+    background: linear-gradient(180deg, var(--brass-light), var(--brass) 70%);
+    color: #2a1b04;
+    border-color: var(--brass-light);
+    box-shadow: 0 0 0 4px rgba(227,172,72,0.25), 0 6px 14px rgba(0,0,0,0.35);
+    transform: scale(1.04);
+  }
+
+  /* ================= GAME SCREEN ================= */
+  #game-screen{ padding-top: 10px; }
+
+  .top-row{
+    width: 100%; max-width: 1100px;
+    display:flex; align-items:center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .quit-btn{
+    background: none; border: 2px solid rgba(199,206,217,0.3);
+    color: #b9c0d6; font-family:'Nunito',sans-serif; font-weight: 800;
+    border-radius: 999px; padding: 8px 16px; font-size: 0.8rem; cursor: pointer;
+  }
+
+  .scoreboard{
+    width: 100%; max-width: 1100px;
+    display:flex; align-items: center; justify-content: space-between;
+    gap: 14px;
+    margin: 6px 0 6px;
+  }
+  .score-block{
+    flex: 1;
+    display:flex; flex-direction: column; align-items:center;
+    background: linear-gradient(180deg, var(--navy-3), var(--navy-2));
+    border: 2px solid rgba(227,172,72,0.25);
+    border-radius: 16px;
+    padding: 10px 14px;
+    min-width: 120px;
+  }
+  .score-label{ font-size: 0.78rem; font-weight: 800; color: #9aa2bd; letter-spacing: 0.03em; }
+  .score-value{ font-family: 'Fredoka', sans-serif; font-size: 2rem; color: var(--brass-light); line-height: 1.1; }
+  .round-block{
+    display:flex; flex-direction:column; align-items:center;
+    padding: 6px 22px;
+  }
+  .round-label{ font-size: 0.72rem; font-weight: 900; letter-spacing: 0.18em; color: #7c8497; }
+  .round-value{ font-family:'Fredoka', sans-serif; font-size: 1.6rem; color: #f4f1e8; }
+  #round-current{ color: var(--money); }
+
+  .banner{
+    min-height: 34px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fredoka', sans-serif;
+    font-size: 1.15rem;
+    color: var(--money);
+    text-align:center;
+    margin: 4px 0 4px;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: all 0.35s ease;
+  }
+  .banner.show{ opacity: 1; transform: translateY(0); }
+
+  .vault-floor{
+    width: 100%; max-width: 1100px;
+    display:flex; gap: 20px; flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 6px;
+  }
+
+  .safe-unit{
+    flex: 1 1 400px; max-width: 480px;
+    position: relative;
+    display:flex; flex-direction: column; align-items: center;
+    gap: 12px;
+  }
+
+  /* ---------- Paper flip card ---------- */
+  .paper-card{
+    width: 78%;
+    max-width: 300px;
+    height: 168px;
+    perspective: 1200px;
+    cursor: pointer;
+  }
+  .paper-inner{
+    position: relative;
+    width: 100%; height: 100%;
+    transition: transform 0.6s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .paper-inner.flipped{ transform: rotateY(180deg); }
+  .paper-face{
+    position: absolute; inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border: 2px solid #c9b57e;
+    border-radius: 6px 6px 3px 3px;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.45);
+    display:flex; flex-direction: column; align-items:center; justify-content:center;
+    padding: 14px;
+  }
+  .paper-blank{
+    background:
+      repeating-linear-gradient(135deg, var(--paper-2) 0px, var(--paper-2) 10px, var(--paper) 10px, var(--paper) 20px);
+    gap: 6px;
+  }
+  .paper-blank .lock-icon{ font-size: 1.8rem; }
+  .paper-blank .blank-label{
+    font-family: 'Fredoka', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #8a7638;
+    text-align:center;
+  }
+  .paper-equations{
+    background: linear-gradient(180deg, var(--paper), var(--paper-2));
+    transform: rotateY(180deg);
+  }
+  .paper-equations::before{
+    content: "TOP SECRET";
+    position: absolute; top: 6px; right: -18px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 0.62rem; font-weight:700; letter-spacing: 0.08em;
+    color: var(--alarm); border: 2px solid var(--alarm);
+    padding: 1px 8px; border-radius: 3px;
+    transform: rotate(12deg);
+    opacity: 0.75;
+  }
+  .paper-title{
+    font-family: 'Fredoka', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: #8a7638;
+    text-align:center;
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .paper-eqs{ display:flex; flex-direction: column; gap: 6px; align-items:center; }
+  .paper-eq{
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.1rem;
+    color: var(--ink);
+    text-align:center;
+    font-weight: 500;
+  }
+  .paper-eq b{ color: var(--brass-dark); }
+  /* ---------- Safe ---------- */
+  .safe{
+    width: 100%;
+    position: relative;
+    border-radius: 26px;
+    padding: 16px;
+    background: linear-gradient(160deg, #dfe4ec, #9aa3b3 45%, #6b7386);
+    box-shadow:
+      0 18px 34px rgba(0,0,0,0.5),
+      inset 0 2px 3px rgba(255,255,255,0.6),
+      inset 0 -6px 10px rgba(0,0,0,0.3);
+    transition: transform 0.12s;
+  }
+  .safe.shake{ animation: shake 0.4s; }
+  @keyframes shake{
+    10%,90%{ transform: translateX(-2px); }
+    20%,80%{ transform: translateX(4px); }
+    30%,50%,70%{ transform: translateX(-8px); }
+    40%,60%{ transform: translateX(8px); }
+  }
+
+  .safe-interior{
+    position:absolute; inset: 16px;
+    border-radius: 18px;
+    background: radial-gradient(circle at 50% 40%, #3a2c10, #1a1206 75%);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 2.6rem;
+    z-index: 0;
+  }
+  .safe-interior span{ filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); opacity:0; transition: opacity 0.4s 0.3s; }
+  .safe-door.open ~ .safe-interior span,
+  .safe-door.open + .safe-interior span{ opacity: 1; }
+
+  .safe-door{
+    position: relative;
+    z-index: 1;
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 30% 25%, #f2f5fa, #c7ced9 40%, #838da0 78%, #59616f 100%);
+    border: 4px solid #4b5164;
+    padding: 26px 16px 30px;
+    display:flex; flex-direction: column; align-items:center; gap: 18px;
+    box-shadow: inset 0 0 0 6px rgba(255,255,255,0.15), inset 0 10px 18px rgba(255,255,255,0.35), inset 0 -14px 20px rgba(0,0,0,0.25);
+    transition: transform 0.9s cubic-bezier(.6,0,.4,1), opacity 0.9s;
+    transform-origin: left center;
+  }
+  .safe-door.open{
+    transform: rotateY(-108deg) translateX(-6%);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  /* rivets */
+  .safe-door::before, .safe-door::after{
+    content:""; position:absolute; width:10px; height:10px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #8a93a4 60%, #555c6b);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .safe-door::before{ top: 10px; left: 10px; }
+  .safe-door::after{ top: 10px; right: 10px; }
+
+  /* ---------- Dial ---------- */
+  .dial-area{
+    display:flex; align-items:center; gap: 10px;
+  }
+  .dial-outer{
+    width: 148px; height: 148px;
+    border-radius: 50%;
+    background:
+      repeating-conic-gradient(from 0deg, #b8802a 0deg 3deg, #d9a441 3deg 9deg);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3);
+    display:flex; align-items:center; justify-content:center;
+    position: relative;
+    touch-action: none;
+    cursor: grab;
+  }
+  .dial-outer:active{ cursor: grabbing; }
+  .dial-pointer{
+    position:absolute; top: -6px; left: 50%; transform: translateX(-50%);
+    width: 0; height:0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 12px solid var(--alarm);
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
+    z-index: 2;
+  }
+  .dial-inner{
+    width: 100px; height: 100px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #6b5321, #3c2c0f 75%);
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.15);
+    position: relative;
+  }
+  .dial-inner::after{
+    content:"";
+    position:absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 22px; border-radius: 3px;
+    background: linear-gradient(180deg, #f7d585, #a97b23);
+  }
+  .dial-display-wrap{
+    display:flex; flex-direction: column; align-items:center; gap: 6px;
+  }
+  .dial-display{
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.9rem;
+    min-width: 74px;
+    text-align:center;
+    background: #14170f;
+    color: #6bff9e;
+    border: 3px solid #3c2c0f;
+    border-radius: 8px;
+    padding: 4px 8px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.7);
+    transition: color 0.15s, text-shadow 0.15s;
+  }
+  .dial-display.flash-good{ color: #6bff9e; text-shadow: 0 0 12px #2fae6d; }
+  .dial-display.flash-bad{ color: #ff6b5e; text-shadow: 0 0 12px #ea4b3c; }
+  .nudge-row{ display:flex; gap: 6px; }
+  .nudge-btn{
+    font-family: 'Fredoka', sans-serif;
+    width: 34px; height: 30px;
+    border-radius: 8px;
+    border: 2px solid var(--chrome-dark);
+    background: linear-gradient(180deg, #e8ecf2, #b7bfcc);
+    color: #333c4d;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .nudge-btn:active{ transform: scale(0.9); }
+
+  /* ---------- Handle ---------- */
+  .handle-btn{
+    display:flex; align-items:center; gap: 10px;
+    background: none; border:none; cursor: pointer;
+    padding: 4px 8px;
+  }
+  .handle-grip{
+    width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #f7d585, #96701f 75%);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  }
+  .handle-bar{
+    width: 74px; height: 16px; border-radius: 8px;
+    background: linear-gradient(180deg, #f7d585, #a97b23 60%, #7a5817);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+    transition: transform 0.15s;
+  }
+  .handle-label{
+    font-size: 0.68rem; font-weight: 900; letter-spacing: 0.08em; color: #4b5164;
+  }
+  .handle-btn.pressed .handle-bar{ transform: rotate(28deg); }
+
+  .status-text{
+    min-height: 22px;
+    font-weight: 800; font-size: 0.85rem;
+    color: #9aa2bd;
+    text-align:center;
+    margin-top: 10px;
+    padding: 0 6px;
+  }
+  .status-text.good{ color: var(--money); }
+  .status-text.bad{ color: var(--alarm); }
+
+  /* ================= END SCREEN ================= */
+  #end-screen{ justify-content:center; }
+  .end-card{
+    max-width: 560px; width: 100%; text-align:center;
+    background: linear-gradient(180deg, var(--navy-3), var(--navy-2));
+    border: 2px solid rgba(227,172,72,0.35);
+    border-radius: 26px;
+    padding: 40px 26px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+  #end-title{
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(1.8rem, 6vw, 2.6rem);
+    color: var(--brass-light);
+    margin: 0 0 8px;
+  }
+  #end-subtitle{ color: #b9c0d6; font-weight: 700; margin-bottom: 26px; }
+  .final-scores{ display:flex; gap: 16px; justify-content:center; margin-bottom: 30px; }
+  .final-scores > div{
+    flex:1; max-width: 200px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 16px; padding: 16px;
+    display:flex; flex-direction: column; gap: 6px;
+  }
+  .final-scores span:first-child{ font-weight: 800; font-size: 0.85rem; color: #9aa2bd; }
+  .final-scores span:last-child{ font-family:'Fredoka', sans-serif; font-size: 2.2rem; color: var(--money); }
+
+  .confetti{
+    position: fixed; top: -20px; width: 10px; height: 16px;
+    z-index: 50; pointer-events: none;
+    animation: fall linear forwards;
+  }
+  @keyframes fall{
+    to{ transform: translateY(110vh) rotate(600deg); opacity: 0.3; }
+  }
+
+  @media (max-width: 640px){
+    .dial-outer{ width: 128px; height: 128px; }
+    .dial-inner{ width: 86px; height: 86px; }
+    .safe-unit{ flex-basis: 100%; }
+    .table-grid{ grid-template-columns: repeat(4, 1fr); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ SETUP SCREEN ============ -->
+  <section id="setup-screen" class="screen active">
+    <div class="setup-card">
+      <h1 class="logo">BREAK <span>THE</span> BANK</h1>
+      <p class="tagline">Two safes. One vault. Crack it first.</p>
+      <div class="setup-players">
+        <div class="setup-player">
+          <h2>Player 1</h2>
+          <p id="p1-readout">Loading your profile…</p>
+        </div>
+        <div class="setup-player">
+          <h2>Player 2</h2>
+          <div id="p2LoginBox">
+            <p>Your name</p>
+            <select id="p2NameSelect" style="width:100%; padding:8px; border-radius:8px;"><option value="">Loading roster…</option></select>
+            <p>Your password</p>
+            <input type="password" id="p2Password" style="width:100%; padding:8px; border-radius:8px;" />
+            <div id="p2Err" style="color:#ff8a8a; font-size:12px; display:none; margin-top:6px;">That password didn't match — try again.</div>
+            <button type="button" id="p2GoBtn" style="margin-top:8px; padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:700;">Join</button>
+          </div>
+        </div>
+      </div>
+      <button id="start-btn" class="btn-primary" disabled>Start the Heist</button>
+    </div>
+  </section>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <section id="game-screen" class="screen">
+    <div class="top-row">
+      <button class="quit-btn" id="quit-btn">↩ New Game</button>
+      <div style="flex:1"></div>
+    </div>
+
+    <div class="scoreboard">
+      <div class="score-block">
+        <span class="score-label">P1 &middot; <span id="p1-table-label"></span></span>
+        <span class="score-value" id="p1-score">0</span>
+      </div>
+      <div class="round-block">
+        <span class="round-label">ROUND</span>
+        <span class="round-value"><span id="round-current">1</span>/5</span>
+      </div>
+      <div class="score-block">
+        <span class="score-label">P2 &middot; <span id="p2-table-label"></span></span>
+        <span class="score-value" id="p2-score">0</span>
+      </div>
+    </div>
+
+    <div class="banner" id="banner"></div>
+
+    <div class="vault-floor">
+      <!-- PLAYER 1 SAFE -->
+      <div class="safe-unit">
+        <div class="paper-card" id="p1-paper">
+          <div class="paper-inner" id="p1-paperinner">
+            <div class="paper-face paper-blank">
+              <span class="lock-icon">🔒</span>
+              <span class="blank-label">Tap to view the job</span>
+            </div>
+            <div class="paper-face paper-equations">
+              <div class="paper-title">The Job — Player 1</div>
+              <div class="paper-eqs" id="p1-eqs"></div>
+            </div>
+          </div>
+        </div>
+        <div class="safe">
+          <div class="safe-interior"><span>💰✨🪙</span></div>
+          <div class="safe-door" id="p1-door">
+            <div class="dial-area">
+              <div class="dial-outer" id="p1-dial">
+                <div class="dial-pointer"></div>
+                <div class="dial-inner"></div>
+              </div>
+              <div class="dial-display-wrap">
+                <div class="dial-display" id="p1-display">2</div>
+                <div class="nudge-row">
+                  <button class="nudge-btn" id="p1-down">▼</button>
+                  <button class="nudge-btn" id="p1-up">▲</button>
+                </div>
+              </div>
+            </div>
+            <button class="handle-btn" id="p1-handle">
+              <span class="handle-grip"></span>
+              <span class="handle-bar"></span>
+              <span class="handle-label">LOCK IN</span>
+            </button>
+          </div>
+        </div>
+        <div class="status-text" id="p1-status">Turn the dial, then lock it in.</div>
+      </div>
+
+      <!-- PLAYER 2 SAFE -->
+      <div class="safe-unit">
+        <div class="paper-card" id="p2-paper">
+          <div class="paper-inner" id="p2-paperinner">
+            <div class="paper-face paper-blank">
+              <span class="lock-icon">🔒</span>
+              <span class="blank-label">Tap to view the job</span>
+            </div>
+            <div class="paper-face paper-equations">
+              <div class="paper-title">The Job — Player 2</div>
+              <div class="paper-eqs" id="p2-eqs"></div>
+            </div>
+          </div>
+        </div>
+        <div class="safe">
+          <div class="safe-interior"><span>💰✨🪙</span></div>
+          <div class="safe-door" id="p2-door">
+            <div class="dial-area">
+              <div class="dial-outer" id="p2-dial">
+                <div class="dial-pointer"></div>
+                <div class="dial-inner"></div>
+              </div>
+              <div class="dial-display-wrap">
+                <div class="dial-display" id="p2-display">2</div>
+                <div class="nudge-row">
+                  <button class="nudge-btn" id="p2-down">▼</button>
+                  <button class="nudge-btn" id="p2-up">▲</button>
+                </div>
+              </div>
+            </div>
+            <button class="handle-btn" id="p2-handle">
+              <span class="handle-grip"></span>
+              <span class="handle-bar"></span>
+              <span class="handle-label">LOCK IN</span>
+            </button>
+          </div>
+        </div>
+        <div class="status-text" id="p2-status">Turn the dial, then lock it in.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ END SCREEN ============ -->
+  <section id="end-screen" class="screen">
+    <div class="end-card">
+      <h1 id="end-title">VAULT CRACKED!</h1>
+      <p id="end-subtitle"></p>
+      <div class="final-scores">
+        <div><span>PLAYER 1</span><span id="final-score1">0</span></div>
+        <div><span>PLAYER 2</span><span id="final-score2">0</span></div>
+      </div>
+      <button id="play-again-btn" class="btn-primary">Play Again</button>
+    </div>
+  </section>
+
+</div>
+
+<script type="module">
+import { levelInfo, generateQuestion } from "../js/levels.js";
+import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
+
+const classId = sessionStorage.getItem("ttr_classId");
+if (!classId) window.location.href = "../index.html";
+const p1Uid = sessionStorage.getItem("ttr_uid");
+const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
+let p2Level = null;
+
+document.getElementById('p1-readout').textContent = levelInfo(p1Level).label;
+getClassRoster(classId).then(roster => {
+  const sel = document.getElementById('p2NameSelect');
+  const options = roster.filter(s => s.uid !== p1Uid);
+  sel.innerHTML = '<option value="">Select your name</option>' +
+    options.map(s => `<option value="${s.email}">${s.name}</option>`).join('');
+});
+document.getElementById('p2GoBtn').addEventListener('click', async () => {
+  const email = document.getElementById('p2NameSelect').value;
+  const password = document.getElementById('p2Password').value;
+  const errEl = document.getElementById('p2Err');
+  errEl.style.display = 'none';
+  if (!email || !password) return;
+  try {
+    const profile = await studentLoginSecondPlayer(email, password);
+    p2Level = profile.level || 1;
+    document.getElementById('p2LoginBox').innerHTML = `<p>${profile.name} — ${levelInfo(p2Level).label} ✔️</p>`;
+    window.__breakBankCheckStart && window.__breakBankCheckStart();
+  } catch (err) {
+    errEl.style.display = 'block';
+  }
+});
+(function(){
+  "use strict";
+
+  const MIN_VAL = 1, MAX_VAL = 144;
+  const DEG_PER_STEP = 7; // finger-degrees needed per +/-1 on the dial
+
+  function wrapValue(v){
+    const range = MAX_VAL - MIN_VAL + 1;
+    return ((v - MIN_VAL) % range + range) % range + MIN_VAL;
+  }
+
+  const state = {
+    players: {
+      1: { level: null, score: 0, step: 0, dialValue: 2, visualRot: 0, rotAccum: 0, equations: [] },
+      2: { level: null, score: 0, step: 0, dialValue: 2, visualRot: 0, rotAccum: 0, equations: [] }
+    },
+    round: 1,
+    maxRounds: 5,
+    roundWon: false,
+    paperTimeout: { 1: null, 2: null }
+  };
+
+  const el = (id) => document.getElementById(id);
+
+  // ---------------- Setup screen ----------------
+  function checkStartEnabled(){
+    el('start-btn').disabled = !(p2Level !== null);
+  }
+  window.__breakBankCheckStart = checkStartEnabled;
+  checkStartEnabled();
+
+  el('start-btn').addEventListener('click', startGame);
+  el('play-again-btn').addEventListener('click', () => {
+    showScreen('setup-screen');
+  });
+  el('quit-btn').addEventListener('click', () => {
+    if(confirm('Start a new game? Current progress will be lost.')) showScreen('setup-screen');
+  });
+
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    el(id).classList.add('active');
+  }
+
+  // ---------------- Game flow ----------------
+  function startGame(){
+    state.players[1].level = p1Level;
+    state.players[2].level = p2Level;
+    state.players[1].score = 0;
+    state.players[2].score = 0;
+    state.round = 1;
+    el('p1-table-label').textContent = levelInfo(state.players[1].level).label;
+    el('p2-table-label').textContent = levelInfo(state.players[2].level).label;
+    updateScoreUI();
+    showScreen('game-screen');
+    setupRound();
+  }
+
+  function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+  function generateEquations(level, count){
+    const eqs = [];
+    for(let i = 0; i < count; i++){
+      eqs.push(generateQuestion(level));
+    }
+    return eqs;
+  }
+
+  function renderPaper(player){
+    const st = state.players[player];
+    const wrap = el(`p${player}-eqs`);
+    wrap.innerHTML = '';
+    st.equations.forEach((eq, i) => {
+      const div = document.createElement('div');
+      div.className = 'paper-eq';
+      const prefix = st.equations.length > 1 ? (i + 1) + '. ' : '';
+      div.innerHTML = prefix + '<b>' + eq.text + '</b> = ?';
+      wrap.appendChild(div);
+    });
+  }
+
+  function setDial(player, value, animateRotation){
+    const st = state.players[player];
+    value = wrapValue(value);
+    st.dialValue = value;
+    el(`p${player}-display`).textContent = value;
+    if(animateRotation !== false){
+      st.visualRot += 0; // rotation already tracked separately in drag
+    }
+  }
+
+  function resetDoors(){
+    [1,2].forEach(p => {
+      el(`p${p}-door`).classList.remove('open');
+    });
+  }
+
+  function setupRound(){
+    state.roundWon = false;
+    resetDoors();
+    el('round-current').textContent = state.round;
+    hideBanner();
+
+    [1,2].forEach(p => {
+      const st = state.players[p];
+      st.step = 0;
+      st.equations = generateEquations(st.level, state.round);
+      renderPaper(p);
+      setDial(p, 2);
+      clearTimeout(state.paperTimeout[p]);
+      el(`p${p}-paperinner`).classList.remove('flipped');
+      const statusEl = el(`p${p}-status`);
+      statusEl.textContent = state.round === 1 && st.equations.length === 1
+        ? 'Turn the dial, then lock it in.'
+        : `Solve them in order — start with #1.`;
+      statusEl.className = 'status-text';
+    });
+  }
+
+  function nextRound(){
+    state.round++;
+    if(state.round > state.maxRounds){
+      endGame();
+      return;
+    }
+    setupRound();
+  }
+
+  function endGame(){
+    const s1 = state.players[1].score, s2 = state.players[2].score;
+    el('final-score1').textContent = s1;
+    el('final-score2').textContent = s2;
+    let title, subtitle;
+    if(s1 === s2){
+      title = 'THE VAULT SPLITS EVEN!';
+      subtitle = `It's a tie, ${s1} points each. Run it back?`;
+    } else {
+      const winner = s1 > s2 ? 1 : 2;
+      title = `PLAYER ${winner} BREAKS THE BANK!`;
+      subtitle = `Final score: Player 1 — ${s1}  ·  Player 2 — ${s2}`;
+    }
+    el('end-title').textContent = title;
+    el('end-subtitle').textContent = subtitle;
+    showScreen('end-screen');
+    launchConfetti();
+  }
+
+  function launchConfetti(){
+    const colors = ['#e3ac48','#f7d585','#2fae6d','#ea4b3c','#c7ced9'];
+    for(let i = 0; i < 60; i++){
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[Math.floor(Math.random()*colors.length)];
+      c.style.animationDuration = (2.2 + Math.random() * 1.6) + 's';
+      c.style.animationDelay = (Math.random() * 0.6) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4500);
+    }
+  }
+
+  // ---------------- Banner ----------------
+  let bannerTimeout = null;
+  function showBanner(text){
+    const b = el('banner');
+    clearTimeout(bannerTimeout);
+    b.textContent = text;
+    b.classList.add('show');
+  }
+  function hideBanner(){
+    const b = el('banner');
+    b.classList.remove('show');
+    b.textContent = '';
+  }
+
+  function updateScoreUI(){
+    el('p1-score').textContent = state.players[1].score;
+    el('p2-score').textContent = state.players[2].score;
+  }
+
+  // ---------------- Paper peek ----------------
+  // Tapping the card flips it to show the equations for exactly 1 second,
+  // then it auto-flips back to the blank side. Tapping again (even while
+  // already showing) resets the 1-second timer, and this can be repeated
+  // as many times as needed.
+  [1,2].forEach(p => {
+    el(`p${p}-paper`).addEventListener('click', () => {
+      const inner = el(`p${p}-paperinner`);
+      clearTimeout(state.paperTimeout[p]);
+      inner.classList.add('flipped');
+      state.paperTimeout[p] = setTimeout(() => {
+        inner.classList.remove('flipped');
+      }, 1000);
+    });
+  });
+
+  // ---------------- Dial interaction ----------------
+  function angleFromCenter(cx, cy, x, y){
+    return Math.atan2(y - cy, x - cx) * 180 / Math.PI;
+  }
+  function shortestDelta(a, b){
+    let d = b - a;
+    while(d > 180) d -= 360;
+    while(d < -180) d += 360;
+    return d;
+  }
+
+  function initDial(player){
+    const dialEl = el(`p${player}-dial`);
+    let dragging = false;
+    let lastAngle = 0;
+
+    function pointerDown(e){
+      dragging = true;
+      dialEl.setPointerCapture(e.pointerId);
+      const rect = dialEl.getBoundingClientRect();
+      lastAngle = angleFromCenter(rect.left + rect.width/2, rect.top + rect.height/2, e.clientX, e.clientY);
+    }
+    function pointerMove(e){
+      if(!dragging) return;
+      const st = state.players[player];
+      const rect = dialEl.getBoundingClientRect();
+      const angle = angleFromCenter(rect.left + rect.width/2, rect.top + rect.height/2, e.clientX, e.clientY);
+      const delta = shortestDelta(lastAngle, angle);
+      lastAngle = angle;
+
+      st.visualRot += delta;
+      dialEl.style.transform = `rotate(${st.visualRot}deg)`;
+
+      st.rotAccum += delta;
+      let changed = false;
+      while(st.rotAccum >= DEG_PER_STEP){
+        st.dialValue = wrapValue(st.dialValue + 1); changed = true;
+        st.rotAccum -= DEG_PER_STEP;
+      }
+      while(st.rotAccum <= -DEG_PER_STEP){
+        st.dialValue = wrapValue(st.dialValue - 1); changed = true;
+        st.rotAccum += DEG_PER_STEP;
+      }
+      if(changed) el(`p${player}-display`).textContent = st.dialValue;
+    }
+    function pointerUp(e){
+      dragging = false;
+      try{ dialEl.releasePointerCapture(e.pointerId); }catch(err){}
+    }
+
+    dialEl.addEventListener('pointerdown', pointerDown);
+    dialEl.addEventListener('pointermove', pointerMove);
+    dialEl.addEventListener('pointerup', pointerUp);
+    dialEl.addEventListener('pointercancel', pointerUp);
+
+    el(`p${player}-up`).addEventListener('click', () => {
+      const st = state.players[player];
+      st.dialValue = wrapValue(st.dialValue + 1);
+      st.visualRot += DEG_PER_STEP;
+      dialEl.style.transform = `rotate(${st.visualRot}deg)`;
+      el(`p${player}-display`).textContent = st.dialValue;
+    });
+    el(`p${player}-down`).addEventListener('click', () => {
+      const st = state.players[player];
+      st.dialValue = wrapValue(st.dialValue - 1);
+      st.visualRot -= DEG_PER_STEP;
+      dialEl.style.transform = `rotate(${st.visualRot}deg)`;
+      el(`p${player}-display`).textContent = st.dialValue;
+    });
+  }
+  initDial(1);
+  initDial(2);
+
+  // ---------------- Handle / submit ----------------
+  function flashDisplay(player, good){
+    const d = el(`p${player}-display`);
+    d.classList.remove('flash-good','flash-bad');
+    void d.offsetWidth;
+    d.classList.add(good ? 'flash-good' : 'flash-bad');
+  }
+
+  function pressHandleAnim(player){
+    const btn = el(`p${player}-handle`);
+    btn.classList.add('pressed');
+    setTimeout(() => btn.classList.remove('pressed'), 220);
+  }
+
+  function submitAnswer(player){
+    if(state.roundWon) return;
+    pressHandleAnim(player);
+
+    const st = state.players[player];
+    const eq = st.equations[st.step];
+    const statusEl = el(`p${player}-status`);
+
+    if(st.dialValue === eq.answer){
+      flashDisplay(player, true);
+      st.step++;
+      if(st.step >= st.equations.length){
+        // WIN THE ROUND
+        state.roundWon = true;
+        const pts = state.round;
+        st.score += pts;
+        updateScoreUI();
+        el(`p${player}-door`).classList.add('open');
+        statusEl.textContent = `Cracked it! +${pts} point${pts > 1 ? 's' : ''}`;
+        statusEl.className = 'status-text good';
+        showBanner(`💥 Player ${player} breaks the vault! +${pts} point${pts > 1 ? 's' : ''}`);
+        setTimeout(nextRound, 2600);
+      } else {
+        setDial(player, 2);
+        statusEl.textContent = `Locked #${st.step}! Now solve #${st.step + 1}.`;
+        statusEl.className = 'status-text good';
+      }
+    } else {
+      flashDisplay(player, false);
+      const safeUnit = el(`p${player}-door`).closest('.safe');
+      safeUnit.classList.remove('shake');
+      void safeUnit.offsetWidth;
+      safeUnit.classList.add('shake');
+      st.step = 0;
+      setDial(player, 2);
+      statusEl.textContent = `Wrong number — alarm reset! Back to #1.`;
+      statusEl.className = 'status-text bad';
+    }
+  }
+
+  el('p1-handle').addEventListener('click', () => submitAnswer(1));
+  el('p2-handle').addEventListener('click', () => submitAnswer(2));
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Base Attack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-1:#160c2b;
+    --sky-2:#3a1f5c;
+    --sky-3:#5a2f6e;
+    --ground-far:#3d5024;
+    --ground-near:#2d3b19;
+    --path:#8a6a41;
+    --path-dark:#6e5330;
+    --p1:#2e7bf6;
+    --p1-dark:#154fa8;
+    --p1-glow:#7fb4ff;
+    --p2:#f04438;
+    --p2-dark:#a3211a;
+    --p2-glow:#ff9d94;
+    --gold:#ffc93c;
+    --gold-dark:#c98d0f;
+    --panel:#241627;
+    --panel-light:#3a2540;
+    --parchment:#f4e9d0;
+    --ink:#2a1a2e;
+    --good:#4fd671;
+    --bad:#ff5c5c;
+    --font-display: 'Luckiest Guy', cursive;
+    --font-body: 'Rubik', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+    font-family:var(--font-body);
+    background: radial-gradient(ellipse at top, var(--sky-3), var(--sky-1) 70%);
+    color:var(--parchment);
+    touch-action: manipulation;
+  }
+  h1,h2,h3,.display{ font-family:var(--font-display); letter-spacing:1px; }
+
+  /* ---------- STARFIELD DECOR ---------- */
+  .stars{ position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+    background-image:
+      radial-gradient(2px 2px at 10% 20%, #fff, transparent),
+      radial-gradient(2px 2px at 80% 10%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 60% 30%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 30% 60%, #fff, transparent),
+      radial-gradient(2px 2px at 90% 50%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 45% 80%, #fff, transparent);
+    background-repeat:no-repeat;
+  }
+
+  /* ============================================================
+     START SCREEN
+     ============================================================ */
+  #start-screen{
+    position:relative; z-index:1; width:100%; height:100vh; height:100dvh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:14px 18px 18px; gap:8px;
+  }
+  .title{
+    font-size:clamp(28px,5vw,46px); text-align:center; margin:2px 0 0;
+    color:var(--gold);
+    text-shadow: 0 3px 0 #7a4a08, 0 6px 10px rgba(0,0,0,.5);
+  }
+  .subtitle{ margin:0 0 6px; text-align:center; font-size:14px; color:#d8c8ea; max-width:640px; font-weight:500;}
+  .setup-wrap{ display:flex; gap:14px; width:100%; max-width:1100px; flex:1; min-height:0; }
+  .setup-col{
+    flex:1; display:flex; flex-direction:column; gap:8px; min-height:0;
+    background:linear-gradient(180deg, var(--panel-light), var(--panel));
+    border-radius:16px; padding:12px; border:3px solid rgba(255,255,255,.08);
+  }
+  .setup-col.p1{ box-shadow: inset 0 0 0 3px var(--p1-dark); }
+  .setup-col.p2{ box-shadow: inset 0 0 0 3px var(--p2-dark); }
+  .setup-heading{
+    font-size:20px; text-align:center; padding:6px; border-radius:10px; margin:0;
+  }
+  .setup-col.p1 .setup-heading{ background:var(--p1); color:#fff; }
+  .setup-col.p2 .setup-heading{ background:var(--p2); color:#fff; }
+  .table-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:6px; overflow-y:auto; padding:2px;
+  }
+  .table-btn{
+    font-family:var(--font-display); font-size:20px; color:#fff;
+    background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.15);
+    border-radius:10px; padding:10px 0; cursor:pointer;
+  }
+  .table-btn:active{ transform:scale(.95); }
+  .setup-col.p1 .table-btn.selected{ background:var(--p1); border-color:var(--p1-glow); box-shadow:0 0 14px var(--p1-glow); }
+  .setup-col.p2 .table-btn.selected{ background:var(--p2); border-color:var(--p2-glow); box-shadow:0 0 14px var(--p2-glow); }
+  .picked-label{ text-align:center; font-size:13px; min-height:16px; color:var(--gold); font-weight:700;}
+
+  .guide-row{ display:flex; gap:8px; width:100%; max-width:1100px; }
+  .guide-card{
+    flex:1; background:rgba(0,0,0,.25); border-radius:12px; padding:8px 10px;
+    display:flex; align-items:center; gap:8px; font-size:12px; border:1px solid rgba(255,255,255,.1);
+  }
+  .guide-emoji{ font-size:26px; }
+  .guide-card b{ display:block; font-size:13px; color:var(--gold); }
+
+  #start-btn{
+    font-family:var(--font-display); font-size:24px; letter-spacing:1px;
+    padding:10px 40px; border-radius:40px; border:none; cursor:pointer;
+    background:linear-gradient(180deg,#ffe08a,var(--gold-dark)); color:#3a2500;
+    box-shadow:0 5px 0 #7a4a08, 0 8px 16px rgba(0,0,0,.4);
+    margin-top:2px;
+  }
+  #start-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  #start-btn:not(:disabled):active{ transform:translateY(4px); box-shadow:0 1px 0 #7a4a08; }
+
+  /* ============================================================
+     GAME SCREEN
+     ============================================================ */
+  #game-screen{ display:none; position:relative; z-index:1; width:100%; height:100vh; height:100dvh; flex-direction:column; }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    padding:4px 8px; position:relative;
+  }
+  .topbar .display{ color:var(--gold); font-size:18px; text-shadow:0 2px 0 #7a4a08; }
+  #restart-btn{
+    position:absolute; right:8px; top:2px; background:rgba(255,255,255,.1); color:#fff;
+    border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:4px 10px; font-size:12px; cursor:pointer;
+  }
+
+  /* battlefield */
+  #battlefield{
+    position:relative; width:100%; flex:0 0 40%; min-height:150px;
+    background:
+      linear-gradient(180deg, transparent 55%, var(--path) 55%, var(--path) 78%, var(--path-dark) 78%),
+      linear-gradient(180deg, var(--ground-far), var(--ground-near) 55%);
+    overflow:hidden; border-top:3px solid rgba(255,255,255,.15); border-bottom:3px solid rgba(255,255,255,.15);
+  }
+  .base{ position:absolute; bottom:8%; width:11%; text-align:center; font-size:clamp(30px,6vw,54px); }
+  .base.p1{ left:1%; } .base.p2{ right:1%; }
+  .base-hp-wrap{ width:90%; margin:0 auto 4px; height:10px; background:rgba(0,0,0,.5); border-radius:6px; overflow:hidden; border:1px solid rgba(0,0,0,.6);}
+  .base-hp-fill{ height:100%; transition:width .2s; }
+  .base.p1 .base-hp-fill{ background:linear-gradient(90deg,var(--p1-dark),var(--p1)); }
+  .base.p2 .base-hp-fill{ background:linear-gradient(90deg,var(--p2-dark),var(--p2)); }
+  .base-hp-num{ font-size:10px; color:#fff; font-weight:700; }
+
+  .unit{
+    position:absolute; bottom:10%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; transition:left .1s linear;
+  }
+  .unit .emoji{ font-size:clamp(20px,3.4vw,30px); filter:drop-shadow(0 3px 2px rgba(0,0,0,.5)); }
+  .unit.p2 .emoji{ transform:scaleX(-1); }
+  .unit-hp-wrap{ width:24px; height:5px; background:rgba(0,0,0,.55); border-radius:3px; overflow:hidden; margin-bottom:1px; }
+  .unit-hp-fill{ height:100%; }
+  .unit.p1 .unit-hp-fill{ background:var(--p1-glow); }
+  .unit.p2 .unit-hp-fill{ background:var(--p2-glow); }
+  .unit.walk .emoji{ animation:bob .5s infinite ease-in-out; }
+  .unit.fight .emoji{ animation:punch .35s infinite ease-in-out; }
+  @keyframes bob{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
+  @keyframes punch{ 0%,100%{transform:scale(1) rotate(0deg);} 50%{transform:scale(1.25) rotate(-8deg);} }
+
+  .floatie{ position:absolute; font-family:var(--font-display); font-size:14px; color:var(--gold); pointer-events:none; animation:floatUp 1s forwards; }
+  @keyframes floatUp{ 0%{opacity:1; transform:translate(-50%,0);} 100%{opacity:0; transform:translate(-50%,-40px);} }
+
+  /* bottom control area */
+  #controls{ flex:1; display:flex; gap:6px; padding:6px; min-height:0; }
+  .panel{
+    flex:1; display:flex; flex-direction:column; gap:6px; min-height:0;
+    background:linear-gradient(180deg,var(--panel-light),var(--panel)); border-radius:14px; padding:8px;
+  }
+  .panel.p1{ box-shadow: inset 0 0 0 3px var(--p1-dark); }
+  .panel.p2{ box-shadow: inset 0 0 0 3px var(--p2-dark); }
+
+  .panel-header{ display:flex; align-items:center; justify-content:space-between; padding:0 4px; }
+  .coin-badge{
+    display:flex; align-items:center; gap:4px; font-family:var(--font-display); font-size:18px;
+    background:rgba(0,0,0,.3); padding:3px 10px; border-radius:20px; color:var(--gold);
+  }
+  .table-badge{ font-size:12px; background:rgba(255,255,255,.1); padding:3px 8px; border-radius:10px; }
+
+  .equation-box{
+    text-align:center; font-family:var(--font-display); font-size:clamp(22px,4vw,32px);
+    background:rgba(0,0,0,.28); border-radius:12px; padding:8px 4px; transition:box-shadow .15s, background .15s;
+  }
+  .equation-box.flash-good{ box-shadow:0 0 0 4px var(--good); background:rgba(79,214,113,.25); }
+  .equation-box.flash-bad{ box-shadow:0 0 0 4px var(--bad); background:rgba(255,92,92,.25); }
+  .answer-line{ font-size:clamp(20px,4vw,28px); min-height:1.2em; }
+  .answer-line .cursor{ opacity:.5; }
+
+  .keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:5px; flex:1; min-height:0; }
+  .key{
+    font-family:var(--font-display); font-size:clamp(16px,3vw,24px); color:#fff;
+    background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); border-radius:10px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .key:active{ background:rgba(255,255,255,.25); transform:scale(.95); }
+  .key.enter{ background:var(--good); color:#0a3312; }
+  .key.clear{ background:var(--bad); color:#3a0a0a; }
+
+  .shop{ display:flex; gap:5px; }
+  .shop-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:1px;
+    background:rgba(0,0,0,.28); border:2px solid rgba(255,255,255,.15); border-radius:10px;
+    padding:5px 2px; cursor:pointer; color:#fff;
+  }
+  .shop-btn .emoji{ font-size:20px; }
+  .shop-btn .name{ font-size:10px; font-weight:700; }
+  .shop-btn .cost{ font-size:11px; color:var(--gold); font-weight:900; }
+  .shop-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .shop-btn:not(:disabled):active{ transform:scale(.94); }
+  .panel.p1 .shop-btn:not(:disabled){ border-color:var(--p1); }
+  .panel.p2 .shop-btn:not(:disabled){ border-color:var(--p2); }
+
+  /* ============================================================
+     GAME OVER OVERLAY
+     ============================================================ */
+  #gameover{
+    display:none; position:fixed; inset:0; z-index:5; align-items:center; justify-content:center;
+    background:rgba(10,4,18,.85);
+  }
+  .go-card{ text-align:center; background:linear-gradient(180deg,var(--panel-light),var(--panel)); padding:26px 36px; border-radius:20px; border:3px solid var(--gold); }
+  .go-title{ font-size:clamp(28px,5vw,44px); color:var(--gold); margin:0 0 6px; }
+  .go-sub{ font-size:16px; margin-bottom:16px; color:#e5d8f0; }
+  #play-again{
+    font-family:var(--font-display); font-size:20px; padding:10px 30px; border-radius:30px; border:none; cursor:pointer;
+    background:linear-gradient(180deg,#ffe08a,var(--gold-dark)); color:#3a2500; box-shadow:0 5px 0 #7a4a08;
+  }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+
+<!-- ============ START SCREEN ============ -->
+<div id="start-screen">
+  <h1 class="title">⚔️ BASE ATTACK ⚔️</h1>
+  <p class="subtitle">Answer times-table questions to earn gold, then spend it on troops. Send your army across the field to smash the enemy base first!</p>
+
+  <div class="setup-wrap">
+    <div class="setup-col p1">
+      <h2 class="setup-heading">🔵 Player 1</h2>
+      <div class="picked-label" id="p1-picked">Loading your profile…</div>
+    </div>
+    <div class="setup-col p2">
+      <h2 class="setup-heading">🔴 Player 2</h2>
+      <div id="p2LoginBox">
+        <div class="picked-label">Your name</div>
+        <select id="p2NameSelect" style="width:100%; padding:8px; border-radius:8px;"><option value="">Loading roster…</option></select>
+        <div class="picked-label">Your password</div>
+        <input type="password" id="p2Password" style="width:100%; padding:8px; border-radius:8px;" />
+        <div id="p2Err" style="color:#ff8a8a; font-size:12px; display:none; margin-top:6px;">That password didn't match — try again.</div>
+        <button type="button" id="p2GoBtn" style="margin-top:8px; padding:8px 18px; border-radius:8px; border:none; cursor:pointer; font-weight:700;">Join</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-row">
+    <div class="guide-card"><span class="guide-emoji">🗡️</span><div><b>Swordsman · 10g</b>Cheap & steady. Good all-rounder.</div></div>
+    <div class="guide-card"><span class="guide-emoji">🏹</span><div><b>Archer · 13g</b>Hits from far away, weak up close.</div></div>
+    <div class="guide-card"><span class="guide-emoji">🐎</span><div><b>Horseman · 19g</b>Fast & tough, but pricey.</div></div>
+  </div>
+
+  <button id="start-btn" disabled>Start Battle!</button>
+</div>
+
+<!-- ============ GAME SCREEN ============ -->
+<div id="game-screen">
+  <div class="topbar">
+    <span class="display">⚔️ BASE ATTACK ⚔️</span>
+    <button id="restart-btn">↺ New Game</button>
+  </div>
+
+  <div id="battlefield">
+    <div class="base p1" id="base-p1">
+      <div class="base-hp-wrap"><div class="base-hp-fill" id="hp-p1" style="width:100%"></div></div>
+      <div class="base-hp-num" id="hpnum-p1">130/130</div>
+      <div>🏰</div>
+    </div>
+    <div class="base p2" id="base-p2">
+      <div class="base-hp-wrap"><div class="base-hp-fill" id="hp-p2" style="width:100%"></div></div>
+      <div class="base-hp-num" id="hpnum-p2">130/130</div>
+      <div>🏯</div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <div class="panel p1">
+      <div class="panel-header">
+        <span class="table-badge" id="p1-table-label">×?</span>
+        <span class="coin-badge">🪙 <span id="p1-coins">0</span></span>
+      </div>
+      <div class="equation-box" id="p1-eq">? × ? = ?</div>
+      <div class="answer-line" id="p1-answer">&nbsp;</div>
+      <div class="keypad" id="p1-keypad"></div>
+      <div class="shop" id="p1-shop"></div>
+    </div>
+
+    <div class="panel p2">
+      <div class="panel-header">
+        <span class="coin-badge">🪙 <span id="p2-coins">0</span></span>
+        <span class="table-badge" id="p2-table-label">×?</span>
+      </div>
+      <div class="equation-box" id="p2-eq">? × ? = ?</div>
+      <div class="answer-line" id="p2-answer">&nbsp;</div>
+      <div class="keypad" id="p2-keypad"></div>
+      <div class="shop" id="p2-shop"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GAME OVER ============ -->
+<div id="gameover">
+  <div class="go-card">
+    <h2 class="go-title" id="go-title">🏆 Player 1 Wins!</h2>
+    <p class="go-sub" id="go-sub">The enemy base has fallen.</p>
+    <button id="play-again">Play Again</button>
+  </div>
+</div>
+
+<script type="module">
+import { levelInfo, generateQuestion } from "../js/levels.js";
+import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
+
+const classId = sessionStorage.getItem("ttr_classId");
+if (!classId) window.location.href = "../index.html";
+const p1Uid = sessionStorage.getItem("ttr_uid");
+const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
+let p2Level = null;
+
+document.getElementById('p1-picked').textContent = levelInfo(p1Level).label;
+getClassRoster(classId).then(roster => {
+  const sel = document.getElementById('p2NameSelect');
+  const options = roster.filter(s => s.uid !== p1Uid);
+  sel.innerHTML = '<option value="">Select your name</option>' +
+    options.map(s => `<option value="${s.email}">${s.name}</option>`).join('');
+});
+document.getElementById('p2GoBtn').addEventListener('click', async () => {
+  const email = document.getElementById('p2NameSelect').value;
+  const password = document.getElementById('p2Password').value;
+  const errEl = document.getElementById('p2Err');
+  errEl.style.display = 'none';
+  if (!email || !password) return;
+  try {
+    const profile = await studentLoginSecondPlayer(email, password);
+    p2Level = profile.level || 1;
+    document.getElementById('p2LoginBox').innerHTML =
+      `<div class="picked-label">${profile.name} — ${levelInfo(p2Level).label} ✔️</div>`;
+    window.__baseAttackCheckReady && window.__baseAttackCheckReady();
+  } catch (err) {
+    errEl.style.display = 'block';
+  }
+});
+(function(){
+  "use strict";
+
+  /* ---------------- UNIT DEFINITIONS ----------------
+     Balance notes:
+     - Swordsman: cheapest, best raw value, the reliable workhorse.
+     - Archer: costs a bit more, hits enemies from far away and gets
+       several free attacks while enemies close the distance, but is
+       fragile and weak once something reaches melee range.
+     - Horseman: costs almost 2x a swordsman, moves fast and hits a
+       little harder, great for rushing an undefended base, but you
+       get fewer of them for your gold.
+  --------------------------------------------------- */
+  const UNIT_TYPES = {
+    sword:  { key:'sword',  name:'Swordsman', emoji:'🗡️', cost:10, hp:60, dmg:8,  atkMs:900,  speed:8,  range:3  },
+    archer: { key:'archer', name:'Archer',    emoji:'🏹', cost:13, hp:40, dmg:9,  atkMs:1300, speed:7,  range:20 },
+    horse:  { key:'horse',  name:'Horseman',  emoji:'🐎', cost:19, hp:85, dmg:10, atkMs:750,  speed:15, range:3  }
+  };
+
+  const BASE_MAX_HP = 130;
+  const P1_SPAWN_X = 8, P2_SPAWN_X = 92;
+  const P1_BASE_X = 3, P2_BASE_X = 97;
+  const COINS_PER_CORRECT = 4;
+  const STREAK_BONUS = 2;
+  const STREAK_LEN = 3;
+  const MIN_GAP = 2.4;
+  const TICK_MS = 100;
+
+  let unitIdCounter = 1;
+
+  function freshPlayer(){
+    return { level:null, coins:5, streak:0, answer:'', eq:{a:0,b:0,symbol:'×',ans:0}, baseHp:BASE_MAX_HP };
+  }
+  let P1 = freshPlayer();
+  let P2 = freshPlayer();
+  P1.level = p1Level;
+  let units = [];
+  let tickHandle = null;
+  let running = false;
+
+  /* ---------------- START SCREEN ---------------- */
+  function checkReady(){
+    document.getElementById('start-btn').disabled = !(p2Level !== null);
+  }
+  window.__baseAttackCheckReady = checkReady;
+  checkReady();
+
+  document.getElementById('start-btn').addEventListener('click', startGame);
+  document.getElementById('restart-btn').addEventListener('click', ()=>location.reload());
+  document.getElementById('play-again').addEventListener('click', ()=>location.reload());
+
+  /* ---------------- BUILD KEYPADS & SHOPS ---------------- */
+  function buildKeypad(container, side){
+    const layout = ['1','2','3','4','5','6','7','8','9','clear','0','enter'];
+    layout.forEach(k=>{
+      const b = document.createElement('button');
+      b.className='key';
+      if(k==='clear'){ b.classList.add('clear'); b.textContent='⌫'; }
+      else if(k==='enter'){ b.classList.add('enter'); b.textContent='✓'; }
+      else b.textContent = k;
+      b.addEventListener('click', ()=>handleKey(side,k));
+      container.appendChild(b);
+    });
+  }
+  buildKeypad(document.getElementById('p1-keypad'),'p1');
+  buildKeypad(document.getElementById('p2-keypad'),'p2');
+
+  function buildShop(container, side){
+    Object.values(UNIT_TYPES).forEach(u=>{
+      const b = document.createElement('button');
+      b.className='shop-btn'; b.dataset.unit=u.key;
+      b.innerHTML = `<span class="emoji">${u.emoji}</span><span class="name">${u.name}</span><span class="cost">🪙${u.cost}</span>`;
+      b.addEventListener('click', ()=>buyUnit(side,u.key));
+      container.appendChild(b);
+    });
+  }
+  buildShop(document.getElementById('p1-shop'),'p1');
+  buildShop(document.getElementById('p2-shop'),'p2');
+
+  /* ---------------- EQUATIONS ---------------- */
+  function newEquation(P){
+    const q = generateQuestion(P.level);
+    P.eq = { a: q.a, b: q.b, symbol: q.symbol, ans: q.answer };
+  }
+
+  function renderEquation(side){
+    const P = side==='p1'?P1:P2;
+    document.getElementById(side+'-eq').textContent = `${P.eq.a} ${P.eq.symbol} ${P.eq.b} = ?`;
+  }
+
+  function renderAnswer(side){
+    const P = side==='p1'?P1:P2;
+    document.getElementById(side+'-answer').innerHTML = (P.answer.length? P.answer : '&nbsp;') + '<span class="cursor">_</span>';
+  }
+
+  function flashEquation(side, good){
+    const el = document.getElementById(side+'-eq');
+    el.classList.remove('flash-good','flash-bad');
+    void el.offsetWidth;
+    el.classList.add(good?'flash-good':'flash-bad');
+    setTimeout(()=>el.classList.remove('flash-good','flash-bad'), 350);
+  }
+
+  function handleKey(side, k){
+    if(!running) return;
+    const P = side==='p1'?P1:P2;
+    if(k==='clear'){ P.answer=''; renderAnswer(side); return; }
+    if(k==='enter'){
+      if(P.answer==='') return;
+      const val = parseInt(P.answer,10);
+      if(val === P.eq.ans){
+        P.streak++;
+        let gain = COINS_PER_CORRECT;
+        if(P.streak>0 && P.streak%STREAK_LEN===0) gain += STREAK_BONUS;
+        P.coins += gain;
+        flashEquation(side,true);
+        spawnFloatie(side, '+'+gain+'g');
+        newEquation(P);
+      } else {
+        P.streak = 0;
+        flashEquation(side,false);
+      }
+      P.answer='';
+      renderAnswer(side);
+      renderEquation(side);
+      updateCoins(side);
+      return;
+    }
+    if(P.answer.length<3) P.answer += k;
+    renderAnswer(side);
+  }
+
+  function spawnFloatie(side, text){
+    const badge = document.querySelector('#'+side+'-coins');
+    const rect = badge.getBoundingClientRect();
+    const f = document.createElement('div');
+    f.className='floatie'; f.textContent=text;
+    f.style.left = (rect.left+rect.width/2)+'px';
+    f.style.top = (rect.top)+'px';
+    document.body.appendChild(f);
+    setTimeout(()=>f.remove(),1000);
+  }
+
+  function updateCoins(side){
+    const P = side==='p1'?P1:P2;
+    document.getElementById(side+'-coins').textContent = P.coins;
+    document.querySelectorAll('#'+side+'-shop .shop-btn').forEach(btn=>{
+      const cost = UNIT_TYPES[btn.dataset.unit].cost;
+      btn.disabled = P.coins < cost;
+    });
+  }
+
+  /* ---------------- UNITS / COMBAT ---------------- */
+  function buyUnit(side, key){
+    if(!running) return;
+    const P = side==='p1'?P1:P2;
+    const def = UNIT_TYPES[key];
+    if(P.coins < def.cost) return;
+    P.coins -= def.cost;
+    updateCoins(side);
+
+    const unit = {
+      id: unitIdCounter++,
+      owner: side,
+      def: def,
+      hp: def.hp,
+      x: side==='p1'? P1_SPAWN_X : P2_SPAWN_X,
+      cooldown: def.atkMs/2,
+      state: 'walk',
+      el: null
+    };
+    const el = document.createElement('div');
+    el.className = 'unit '+side+' walk';
+    el.innerHTML = `<div class="unit-hp-wrap"><div class="unit-hp-fill" style="width:100%"></div></div><div class="emoji">${def.emoji}</div>`;
+    document.getElementById('battlefield').appendChild(el);
+    unit.el = el;
+    updateUnitDom(unit);
+    units.push(unit);
+  }
+
+  function updateUnitDom(u){
+    u.el.style.left = u.x+'%';
+    const fill = u.el.querySelector('.unit-hp-fill');
+    fill.style.width = Math.max(0,(u.hp/u.def.hp*100))+'%';
+    u.el.classList.toggle('fight', u.state==='fight');
+    u.el.classList.toggle('walk', u.state==='walk');
+  }
+
+  function nearestEnemy(u){
+    let best=null, bestDist=Infinity;
+    for(const o of units){
+      if(o.owner===u.owner) continue;
+      const d = Math.abs(o.x-u.x);
+      if(d<bestDist){ bestDist=d; best=o; }
+    }
+    return best?{unit:best,dist:bestDist}:null;
+  }
+
+  function nearestAllyAhead(u, dir){
+    let bestDist = Infinity;
+    for(const o of units){
+      if(o===u || o.owner!==u.owner) continue;
+      const ahead = dir>0 ? (o.x - u.x) : (u.x - o.x);
+      if(ahead>0 && ahead<bestDist) bestDist=ahead;
+    }
+    return bestDist;
+  }
+
+  function distToEnemyBase(u){
+    return u.owner==='p1' ? (P2_BASE_X - u.x) : (u.x - P1_BASE_X);
+  }
+
+  function damageBase(owner, dmg){
+    const P = owner==='p1'? P2 : P1; // attacker owner p1 damages p2's base
+    P.baseHp = Math.max(0, P.baseHp - dmg);
+    const targetSide = owner==='p1'?'p2':'p1';
+    document.getElementById('hp-'+targetSide).style.width = (P.baseHp/BASE_MAX_HP*100)+'%';
+    document.getElementById('hpnum-'+targetSide).textContent = Math.ceil(P.baseHp)+'/'+BASE_MAX_HP;
+    if(P.baseHp<=0) endGame(owner);
+  }
+
+  function tick(){
+    if(!running) return;
+    const dt = TICK_MS/1000;
+
+    for(const u of units){
+      if(u.hp<=0) continue;
+      const dir = u.owner==='p1' ? 1 : -1;
+      const enemy = nearestEnemy(u);
+
+      if(enemy && enemy.dist <= u.def.range){
+        u.state='fight';
+        u.cooldown -= TICK_MS;
+        if(u.cooldown<=0){
+          u.cooldown = u.def.atkMs;
+          enemy.unit.hp -= u.def.dmg;
+        }
+      } else {
+        const distBase = distToEnemyBase(u);
+        if(!enemy && distBase <= u.def.range){
+          u.state='fight';
+          u.cooldown -= TICK_MS;
+          if(u.cooldown<=0){
+            u.cooldown = u.def.atkMs;
+            damageBase(u.owner, u.def.dmg);
+          }
+        } else {
+          const allyGap = nearestAllyAhead(u,dir);
+          if(allyGap > MIN_GAP){
+            u.x += dir*u.def.speed*dt;
+            u.x = Math.max(0, Math.min(100,u.x));
+          }
+          u.state='walk';
+        }
+      }
+    }
+
+    // remove dead units
+    for(const u of units){
+      if(u.hp<=0 && u.el){ u.el.remove(); u.el=null; }
+    }
+    units = units.filter(u=>u.hp>0);
+
+    for(const u of units) updateUnitDom(u);
+  }
+
+  function endGame(winnerSide){
+    running = false;
+    clearInterval(tickHandle);
+    const title = document.getElementById('go-title');
+    const sub = document.getElementById('go-sub');
+    if(winnerSide==='p1'){ title.textContent='🏆 Player 1 Wins!'; sub.textContent='The Blue army smashed the Red base!'; }
+    else { title.textContent='🏆 Player 2 Wins!'; sub.textContent='The Red army smashed the Blue base!'; }
+    document.getElementById('gameover').style.display='flex';
+  }
+
+  /* ---------------- GAME START ---------------- */
+  function startGame(){
+    P1.level = p1Level;
+    P2.level = p2Level;
+    document.getElementById('p1-table-label').textContent = levelInfo(P1.level).label;
+    document.getElementById('p2-table-label').textContent = levelInfo(P2.level).label;
+    newEquation(P1); newEquation(P2);
+    renderEquation('p1'); renderEquation('p2');
+    renderAnswer('p1'); renderAnswer('p2');
+    updateCoins('p1'); updateCoins('p2');
+
+    document.getElementById('start-screen').style.display='none';
+    document.getElementById('game-screen').style.display='flex';
+
+    running = true;
+    tickHandle = setInterval(tick, TICK_MS);
+  }
+})();
+</script>
+</body>
+</html>
