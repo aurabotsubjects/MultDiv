@@ -406,6 +406,9 @@ import { levelInfo, generateQuestion } from "../js/levels.js";
 import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
 import { createAIOpponent, scheduleAIAnswer } from "../js/ai-opponent.js";
 import { recordGameResult } from "../js/results.js";
+import { getAISettings, applyAISettings } from "../js/ai-settings.js";
+
+const aiSettingsPromise = getAISettings();
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
@@ -488,13 +491,13 @@ const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
   document.getElementById('p2ModeAI').addEventListener('click', () => setP2Mode('ai'));
 
   document.querySelectorAll('.diff-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('sel'));
       btn.classList.add('sel');
       const bot = createAIOpponent(btn.dataset.diff);
       state.p2.level = bot.level;
       state.p2.isAI = true;
-      state.p2.aiProfile = bot.profile;
+      state.p2.aiProfile = applyAISettings(bot.profile, "race-car-math", await aiSettingsPromise);
       state.p2.name = bot.name;
       document.getElementById('p2TableLabel').textContent = levelInfo(bot.level).label;
       document.getElementById('p2AIReadout').textContent = `${bot.name} — ${levelInfo(bot.level).label} ✔️`;

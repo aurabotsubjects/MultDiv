@@ -140,6 +140,15 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read: if isSignedIn();
     }
+
+    match /settings/{id} {
+      // AI opponent accuracy/speed per game, set from the teacher Settings
+      // page. Every signed-in user (including students) needs to read this
+      // so their games know how to configure the bot; only teachers/admins
+      // can change it.
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && myRole() in ['teacher', 'admin'];
+    }
   }
 }
 ```

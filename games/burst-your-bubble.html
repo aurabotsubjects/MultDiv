@@ -346,6 +346,9 @@
   import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
   import { createAIOpponent, scheduleAIAnswer } from "../js/ai-opponent.js";
   import { recordGameResult } from "../js/results.js";
+  import { getAISettings, applyAISettings } from "../js/ai-settings.js";
+
+  const aiSettingsPromise = getAISettings();
 
   const classId = sessionStorage.getItem("ttr_classId");
   if (!classId) window.location.href = "../index.html";
@@ -397,11 +400,11 @@
   document.getElementById('p2ModeHuman').addEventListener('click', () => setP2Mode('human'));
   document.getElementById('p2ModeAI').addEventListener('click', () => setP2Mode('ai'));
   document.querySelectorAll('.p2-diff-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       document.querySelectorAll('.p2-diff-btn').forEach(b => b.classList.remove('sel'));
       btn.classList.add('sel');
       const bot = createAIOpponent(btn.dataset.diff);
-      p2Name = bot.name; p2Level = bot.level; p2IsAI = true; p2AIProfile = bot.profile;
+      p2Name = bot.name; p2Level = bot.level; p2IsAI = true; p2AIProfile = applyAISettings(bot.profile, "burst-your-bubble", await aiSettingsPromise);
       document.getElementById('p2AIReadout').textContent = `${bot.name} — ${levelInfo(bot.level).label} ✔️`;
       window.__bubbleUpdateStartState && window.__bubbleUpdateStartState();
     });

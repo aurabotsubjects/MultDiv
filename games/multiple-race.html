@@ -68,6 +68,9 @@ import { levelInfo, generateQuestion } from "../js/levels.js";
 import { renderPlayer2Login } from "../js/player2-login.js";
 import { scheduleAIAnswer } from "../js/ai-opponent.js";
 import { recordGameResult } from "../js/results.js";
+import { getAISettings, applyAISettings } from "../js/ai-settings.js";
+
+const aiSettingsPromise = getAISettings();
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
@@ -78,8 +81,10 @@ const players = {
 };
 
 document.getElementById("p1Line").textContent = `${players.a.name} (${levelInfo(players.a.level).label}) is Player 1.`;
-renderPlayer2Login(document.getElementById("p2Container"), classId, players.a.uid).then(profile => {
-  players.b = { uid: profile.uid, name: profile.name, level: profile.level || 1, pos: 0, isAI: !!profile.isAI, aiProfile: profile.profile || null };
+renderPlayer2Login(document.getElementById("p2Container"), classId, players.a.uid).then(async profile => {
+  let aiProfile = profile.profile || null;
+  if (profile.isAI) aiProfile = applyAISettings(aiProfile, "multiple-race", await aiSettingsPromise);
+  players.b = { uid: profile.uid, name: profile.name, level: profile.level || 1, pos: 0, isAI: !!profile.isAI, aiProfile };
   document.getElementById("p2Container").innerHTML = `<p class="hint-text">Player 2: ${profile.name} (${levelInfo(players.b.level).label}) ✔️</p>`;
   document.getElementById("startBtn").style.display = "inline-block";
 });

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Times Tables Race — Settings</title>
+<link rel="stylesheet" href="css/style.css" />
+<style>
+  .settings-tabs { display: flex; gap: 8px; margin-bottom: 4px; }
+  .settings-tab {
+    padding: 8px 16px; border-radius: 999px; background: var(--asphalt-2); color: var(--ink-soft);
+    font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; border: 1px solid var(--line);
+  }
+  .settings-tab.active { background: var(--gold); color: #0F1319; border-color: var(--gold); }
+
+  .game-row { padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .game-row:last-child { border-bottom: none; }
+  .game-row-title { font-family: var(--font-display); font-weight: 800; margin-bottom: 10px; }
+
+  .accuracy-line { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .accuracy-line input[type="range"] { flex: 1; accent-color: var(--gold); height: 6px; }
+  .accuracy-value { font-family: var(--font-display); font-weight: 800; color: var(--gold); width: 48px; text-align: right; }
+
+  .time-line { display: flex; align-items: flex-end; gap: 10px; }
+  .time-field { display: flex; flex-direction: column; gap: 4px; }
+  .time-field input[type="number"] {
+    width: 90px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--asphalt-2); color: var(--track); font-family: var(--font-body);
+  }
+  .time-field input:focus { border-color: var(--teal); outline: none; }
+  .time-sep { color: var(--ink-soft); padding-bottom: 10px; }
+
+  .save-bar {
+    position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px;
+    padding: 14px 0; margin-top: 6px;
+  }
+  .save-note { font-size: 0.85rem; color: var(--teal); opacity: 0; transition: opacity 0.2s; }
+  .save-note.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="chrome-bar">
+    <div class="brand"><span class="flag">⚙️</span> Settings</div>
+    <div class="who" id="whoBar"></div>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="page">
+    <div class="panel" id="loginPanel" style="display:none;">
+      <a href="teacher.html" class="btn ghost" style="display:inline-block; margin-bottom:14px; padding:8px 14px; font-size:0.85rem; text-decoration:none;">← Back</a>
+      <h1>Teacher sign-in</h1>
+      <p>Sign in to manage settings.</p>
+      <div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+        <div><div class="label">Email</div><input type="text" id="email" /></div>
+        <div><div class="label">Password</div><input type="password" id="password" /></div>
+        <div id="loginError" class="error-text" style="display:none;"></div>
+        <button class="btn gold" id="loginBtn">Sign in</button>
+      </div>
+    </div>
+
+    <div id="loadingPanel" class="panel"><p>Loading…</p></div>
+
+    <div id="settingsBody" style="display:none; flex-direction:column; gap:16px;">
+      <div class="panel">
+        <a href="teacher.html" class="btn ghost" style="display:inline-block; margin-bottom:14px; padding:8px 14px; font-size:0.85rem; text-decoration:none;">← Back to dashboard</a>
+        <h1>⚙️ Settings</h1>
+        <div class="settings-tabs">
+          <div class="settings-tab active">🤖 AI</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>AI opponent difficulty</h2>
+        <p>For each game, set how <b>accurate</b> the AI bot is and how <b>long</b> it takes to answer. This applies to every difficulty level in that game — the Easy/Medium/Hard buttons students see still change how hard the <i>math</i> is, but these settings control how sharp and how fast the bot itself plays.</p>
+        <div id="gamesList" style="margin-top:8px;"></div>
+        <div class="save-bar">
+          <button class="btn gold" id="saveBtn">Save changes</button>
+          <span class="save-note" id="saveNote">Saved ✓</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { auth, onAuthStateChanged } from "./js/firebase-init.js";
+import { teacherLogin, getMyProfile, logout } from "./js/auth.js";
+import { GAME_LIST, DEFAULT_AI_SETTINGS, getAISettings, saveAISettings } from "./js/ai-settings.js";
+
+const loginPanel = document.getElementById("loginPanel");
+const loadingPanel = document.getElementById("loadingPanel");
+const settingsBody = document.getElementById("settingsBody");
+const whoBar = document.getElementById("whoBar");
+const gamesList = document.getElementById("gamesList");
+
+let currentSettings = null;
+
+function renderGamesList() {
+  gamesList.innerHTML = GAME_LIST.map(g => {
+    const s = currentSettings[g.id] || DEFAULT_AI_SETTINGS[g.id];
+    const pct = Math.round(s.accuracy * 100);
+    return `
+      <div class="game-row" data-game="${g.id}">
+        <div class="game-row-title">${g.name}</div>
+        <div class="accuracy-line">
+          <span class="label" style="margin:0;">Accuracy</span>
+          <input type="range" class="accuracy-slider" min="0" max="100" step="1" value="${pct}" />
+          <span class="accuracy-value">${pct}%</span>
+        </div>
+        <div class="time-line">
+          <div class="time-field">
+            <span class="label" style="margin:0;">Min time (sec)</span>
+            <input type="number" class="min-time" min="0.2" max="30" step="0.1" value="${(s.minMs / 1000).toFixed(1)}" />
+          </div>
+          <div class="time-sep">to</div>
+          <div class="time-field">
+            <span class="label" style="margin:0;">Max time (sec)</span>
+            <input type="number" class="max-time" min="0.2" max="30" step="0.1" value="${(s.maxMs / 1000).toFixed(1)}" />
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  gamesList.querySelectorAll(".accuracy-slider").forEach(slider => {
+    slider.addEventListener("input", () => {
+      slider.parentElement.querySelector(".accuracy-value").textContent = slider.value + "%";
+    });
+  });
+}
+
+document.getElementById("saveBtn").addEventListener("click", async () => {
+  const updated = {};
+  gamesList.querySelectorAll(".game-row").forEach(row => {
+    const gameId = row.dataset.game;
+    const accuracy = Number(row.querySelector(".accuracy-slider").value) / 100;
+    let minSec = Number(row.querySelector(".min-time").value) || 0.2;
+    let maxSec = Number(row.querySelector(".max-time").value) || minSec;
+    if (maxSec < minSec) { const t = minSec; minSec = maxSec; maxSec = t; }
+    updated[gameId] = { accuracy, minMs: Math.round(minSec * 1000), maxMs: Math.round(maxSec * 1000) };
+  });
+  currentSettings = updated;
+  const saveBtn = document.getElementById("saveBtn");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving…";
+  try {
+    await saveAISettings(updated);
+    const note = document.getElementById("saveNote");
+    note.classList.add("show");
+    setTimeout(() => note.classList.remove("show"), 2000);
+  } catch (err) {
+    alert("Couldn't save settings: " + (err.message || err));
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save changes";
+  }
+});
+
+async function showSettingsFor(profile) {
+  whoBar.innerHTML = `${profile.name} · <a href="#" id="logoutLink" style="text-decoration:underline;">Sign out</a>`;
+  document.getElementById("logoutLink").addEventListener("click", async (e) => { e.preventDefault(); await logout(); location.href = "teacher.html"; });
+  loginPanel.style.display = "none";
+  loadingPanel.style.display = "none";
+  settingsBody.style.display = "flex";
+  currentSettings = await getAISettings();
+  renderGamesList();
+}
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const errEl = document.getElementById("loginError");
+  errEl.style.display = "none";
+  try {
+    const profile = await teacherLogin(email, password);
+    await showSettingsFor(profile);
+  } catch (err) {
+    errEl.textContent = err.message || "Couldn't sign in.";
+    errEl.style.display = "block";
+  }
+});
+
+// If a teacher is already signed in (e.g. arrived here from the dashboard),
+// skip straight to settings instead of asking them to log in again.
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { loadingPanel.style.display = "none"; loginPanel.style.display = "block"; return; }
+  const profile = await getMyProfile();
+  if (profile && (profile.role === "teacher" || profile.role === "admin") && profile.status !== "pending" && profile.status !== "denied") {
+    await showSettingsFor(profile);
+  } else {
+    loadingPanel.style.display = "none";
+    loginPanel.style.display = "block";
+  }
+});
+</script>
+</body>
+</html>

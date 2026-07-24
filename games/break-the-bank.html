@@ -694,6 +694,9 @@ import { levelInfo, generateQuestion } from "../js/levels.js";
 import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
 import { createAIOpponent, scheduleAIAnswer } from "../js/ai-opponent.js";
 import { recordGameResult } from "../js/results.js";
+import { getAISettings, applyAISettings } from "../js/ai-settings.js";
+
+const aiSettingsPromise = getAISettings();
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
@@ -746,25 +749,13 @@ function setP2Mode(mode){
 }
 document.getElementById('p2ModeHuman').addEventListener('click', () => setP2Mode('human'));
 document.getElementById('p2ModeAI').addEventListener('click', () => setP2Mode('ai'));
-// Break the Bank plays much faster/tighter than the other games (it's a
-// straight speed race with no downtime between attempts), so the shared
-// AI_PROFILES from ai-opponent.js feel far too tough here even on "easy".
-// Tune this game's own bot speed/accuracy down — new "hard" lands just a
-// touch below the shared module's "easy", and medium/easy scale down from
-// there — while still using the shared module's level/name/emoji per tier.
-const BANK_AI_TUNING = {
-  easy:   { accuracy: 0.55, minMs: 3600, maxMs: 6200 },
-  medium: { accuracy: 0.68, minMs: 2900, maxMs: 5200 },
-  hard:   { accuracy: 0.80, minMs: 2300, maxMs: 4300 },
-};
 document.querySelectorAll('.p2-diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     document.querySelectorAll('.p2-diff-btn').forEach(b => b.classList.remove('sel'));
     btn.classList.add('sel');
     const bot = createAIOpponent(btn.dataset.diff);
-    const tuning = BANK_AI_TUNING[btn.dataset.diff] || BANK_AI_TUNING.medium;
     p2Level = bot.level; p2IsAI = true;
-    p2AIProfile = { ...bot.profile, ...tuning };
+    p2AIProfile = applyAISettings(bot.profile, "break-the-bank", await aiSettingsPromise);
     p2Name = bot.name;
     document.getElementById('p2AIReadout').textContent = `${bot.name} — ${levelInfo(bot.level).label} ✔️`;
     window.__breakBankCheckStart && window.__breakBankCheckStart();

@@ -12,6 +12,8 @@
 //                              player2:{uid,name}, winnerUid, winnerName, createdAt }
 //                            (see js/results.js — human-vs-human match results only,
 //                            used for the weekly leaderboard)
+//   settings/aiConfig       { [gameId]: { accuracy, minMs, maxMs } } — teacher-set AI
+//                            opponent tuning per game (see js/ai-settings.js + settings.html)
 // ============================================================
 import {
   db, collection, doc, getDoc, getDocs, setDoc, addDoc,
