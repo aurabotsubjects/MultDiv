@@ -133,6 +133,13 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && myRole() == 'teacher';
     }
+
+    match /gameResults/{id} {
+      // One doc per completed 2-player (human vs human) game — powers the
+      // weekly leaderboard. vs-AI matches are never written here at all.
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+    }
   }
 }
 ```

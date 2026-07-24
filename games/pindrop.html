@@ -409,13 +409,14 @@
 import { levelInfo, generateQuestion } from "../js/levels.js";
 import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
 import { createAIOpponent, scheduleAIAnswer } from "../js/ai-opponent.js";
+import { recordGameResult } from "../js/results.js";
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
 const p1Uid = sessionStorage.getItem("ttr_uid");
 const p1Name = sessionStorage.getItem("ttr_name");
 const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
-let p2Name = null, p2Level = null, p2IsAI = false, p2AIProfile = null;
+let p2Name = null, p2Level = null, p2Uid = null, p2IsAI = false, p2AIProfile = null;
 
 document.getElementById('p1Readout').textContent = `${p1Name} — ${levelInfo(p1Level).label}`;
 getClassRoster(classId).then(roster => {
@@ -434,6 +435,7 @@ document.getElementById('p2GoBtn').addEventListener('click', async () => {
     const profile = await studentLoginSecondPlayer(email, password);
     p2Name = profile.name;
     p2Level = profile.level || 1;
+    p2Uid = profile.uid;
     p2IsAI = false; p2AIProfile = null;
     document.getElementById('p2LoginBox').innerHTML =
       `<div class="name-input" style="display:flex; align-items:center;">${profile.name} — ${levelInfo(p2Level).label} ✔️</div>`;
@@ -741,6 +743,15 @@ document.querySelectorAll('.p2-diff-btn').forEach(btn => {
     cards.innerHTML = '';
     const p1 = state.p1, p2 = state.p2;
     const winner = p1.score===p2.score ? 0 : (p1.score>p2.score?1:2);
+    if (!p2IsAI && p2Uid && winner !== 0) {
+      recordGameResult({
+        classId, gameId: "pindrop",
+        player1: { uid: p1Uid, name: p1.name },
+        player2: { uid: p2Uid, name: p2.name },
+        winnerUid: winner === 1 ? p1Uid : p2Uid,
+        winnerName: winner === 1 ? p1.name : p2.name
+      });
+    }
     [p1,p2].forEach(p=>{
       const card = document.createElement('div');
       card.className = 'result-card c'+p.num + (winner===p.num?' winner':'');

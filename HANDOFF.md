@@ -82,6 +82,15 @@ classRosters/{classId}  { className, students: [{uid, name, email}] }  — PUBLI
                          (needed so the student-login name-dropdown works pre-auth)
 notifications/{id}      { classId, studentId, studentName, level, score, total, status, createdAt }
 testResults/{id}        { classId, studentId, studentName, level, score, total, passed, createdAt }
+gameResults/{id}        { classId, gameId, gameName, weekId ('YYYY-MM-DD' of that week's
+                           Monday), player1:{uid,name}, player2:{uid,name}, winnerUid,
+                           winnerName, createdAt }  — one doc per completed 2-player game,
+                           written by js/results.js. ONLY written for human-vs-human
+                           matches (every game checks `!p2.isAI` before calling
+                           recordGameResult) — vs-AI games never count. Powers
+                           leaderboard.html (weekly top-3 per game + overall "most wins",
+                           scoped to a classId, auto-"resets" each Monday since the page
+                           only ever queries the current weekId — nothing is deleted).
 ```
 
 Firestore security rules are documented in full in `README.md` inside the

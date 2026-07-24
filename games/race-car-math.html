@@ -405,6 +405,7 @@
 import { levelInfo, generateQuestion } from "../js/levels.js";
 import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
 import { createAIOpponent, scheduleAIAnswer } from "../js/ai-opponent.js";
+import { recordGameResult } from "../js/results.js";
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
@@ -453,6 +454,7 @@ const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
     if (!email || !password) return;
     try {
       const profile = await studentLoginSecondPlayer(email, password);
+      state.p2.uid = profile.uid;
       state.p2.level = profile.level || 1;
       state.p2.isAI = false;
       state.p2.aiProfile = null;
@@ -759,6 +761,15 @@ const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
     state.raceRunning = false;
     sfx.win();
     const name = key === 'p1' ? 'Player 1' : (state.p2.isAI ? state.p2.name : 'Player 2');
+    if (!state.p2.isAI && state.p2.uid) {
+      recordGameResult({
+        classId, gameId: "race-car-math",
+        player1: { uid: p1Uid, name: p1Name },
+        player2: { uid: state.p2.uid, name: state.p2.name || "Player 2" },
+        winnerUid: key === 'p1' ? p1Uid : state.p2.uid,
+        winnerName: key === 'p1' ? p1Name : (state.p2.name || "Player 2")
+      });
+    }
     document.getElementById('winnerText').textContent = '\uD83C\uDFC1 ' + name + ' Wins!';
     document.getElementById('winnerSub').textContent = 'First to ' + LAPS_TO_WIN + ' laps, practicing ' + levelInfo(state[key].level).label + '.';
     document.getElementById('winnerOverlay').classList.remove('hidden');

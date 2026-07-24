@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Times Tables Race — Weekly Leaderboard</title>
+<link rel="stylesheet" href="css/style.css" />
+<style>
+  .standings { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .standing-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+    border-radius: 10px; background: var(--asphalt-2, rgba(255,255,255,0.04)); border: 1px solid var(--line);
+  }
+  .standing-row.rank-1 { border-color: var(--gold); background: rgba(255,197,61,0.12); }
+  .standing-rank { font-family: var(--font-display); font-weight: 900; font-size: 1.1rem; width: 26px; text-align: center; }
+  .standing-name { flex: 1; font-weight: 700; font-family: var(--font-display); }
+  .standing-wins { font-family: var(--font-display); font-weight: 800; color: var(--gold); font-size: 0.95rem; white-space: nowrap; }
+  .game-matches { font-size: 0.78rem; color: var(--ink-soft); font-family: var(--font-body); margin-top: 2px; }
+  .empty-note { color: var(--ink-soft); font-size: 0.9rem; margin-top: 10px; }
+  .loading-note { color: var(--ink-soft); font-size: 0.9rem; }
+  .week-label { font-family: var(--font-body); font-size: 0.85rem; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="chrome-bar">
+    <div class="brand"><span class="flag">🏆</span> Weekly Leaderboard</div>
+    <a class="who" id="backLink" href="menu.html" style="text-decoration:underline;">← Menu</a>
+  </div>
+  <div class="stripe"></div>
+
+  <div class="page">
+    <div class="panel">
+      <h1>🏆 This week's champions</h1>
+      <p class="week-label" id="weekLabel">Loading…</p>
+      <p style="margin-top:8px;">Only matches played <b>against a classmate</b> count — practice games against the computer don't add to the leaderboard. Everything resets fresh every Monday.</p>
+    </div>
+
+    <div class="panel" id="overallPanel" style="display:none;">
+      <h2>👑 Most wins this week (all games)</h2>
+      <div class="standings" id="overallStandings"></div>
+    </div>
+
+    <div id="loadingPanel" class="panel">
+      <p class="loading-note">Loading this week's results…</p>
+    </div>
+
+    <div id="emptyPanel" class="panel" style="display:none;">
+      <h2>No matches yet this week</h2>
+      <p class="empty-note">Play a 2-player game with a classmate and come back — the leaderboard fills in as soon as someone wins a match.</p>
+    </div>
+
+    <div id="gamesContainer" style="display:flex; flex-direction:column; gap:16px;"></div>
+  </div>
+</div>
+
+<script type="module">
+import { getWeeklyResults, aggregateByGame, aggregateOverall, currentWeekLabel, GAME_NAMES } from "./js/results.js";
+
+// classId comes from a logged-in student session by default, or can be
+// overridden with ?classId=... (used by the teacher dashboard's leaderboard link).
+const params = new URLSearchParams(window.location.search);
+const classId = params.get("classId") || sessionStorage.getItem("ttr_classId");
+if (params.get("classId")) {
+  const backLink = document.getElementById("backLink");
+  backLink.href = "teacher.html";
+  backLink.textContent = "← Teacher dashboard";
+}
+
+if (!classId) {
+  document.getElementById("loadingPanel").innerHTML = "<p>No class selected — head back to the menu and try again.</p>";
+} else {
+  document.getElementById("weekLabel").textContent = `Week of ${currentWeekLabel()}`;
+
+  const medal = (i) => ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
+
+  function renderStandings(container, standings) {
+    container.innerHTML = standings.map((s, i) => `
+      <div class="standing-row rank-${i + 1}">
+        <div class="standing-rank">${medal(i)}</div>
+        <div class="standing-name">${s.name}</div>
+        <div class="standing-wins">${s.wins} win${s.wins === 1 ? "" : "s"}</div>
+      </div>
+    `).join("");
+  }
+
+  getWeeklyResults(classId).then(results => {
+    document.getElementById("loadingPanel").style.display = "none";
+
+    if (results.length === 0) {
+      document.getElementById("emptyPanel").style.display = "block";
+      return;
+    }
+
+    const overall = aggregateOverall(results);
+    document.getElementById("overallPanel").style.display = "block";
+    renderStandings(document.getElementById("overallStandings"), overall);
+
+    const byGame = aggregateByGame(results);
+    // Keep a stable, friendly order (matches the menu's game list) and only
+    // show games that actually have a recorded match this week.
+    const gameOrder = Object.keys(GAME_NAMES);
+    const container = document.getElementById("gamesContainer");
+    container.innerHTML = gameOrder
+      .filter(gameId => byGame[gameId])
+      .map(gameId => {
+        const g = byGame[gameId];
+        return `
+          <div class="panel">
+            <h2>${g.gameName}</h2>
+            <div class="game-matches">${g.matches} match${g.matches === 1 ? "" : "es"} played this week</div>
+            <div class="standings" data-game="${gameId}"></div>
+          </div>
+        `;
+      }).join("");
+    gameOrder.filter(gameId => byGame[gameId]).forEach(gameId => {
+      renderStandings(container.querySelector(`[data-game="${gameId}"]`), byGame[gameId].standings);
+    });
+  }).catch(err => {
+    console.error(err);
+    document.getElementById("loadingPanel").innerHTML = "<p>Couldn't load the leaderboard right now — try refreshing.</p>";
+  });
+}
+</script>
+</body>
+</html>

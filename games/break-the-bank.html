@@ -693,12 +693,15 @@
 import { levelInfo, generateQuestion } from "../js/levels.js";
 import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
 import { createAIOpponent, scheduleAIAnswer } from "../js/ai-opponent.js";
+import { recordGameResult } from "../js/results.js";
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
 const p1Uid = sessionStorage.getItem("ttr_uid");
+const p1Name = sessionStorage.getItem("ttr_name") || "Player 1";
 const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
 let p2Level = null;
+let p2Uid = null;
 let p2IsAI = false;
 let p2AIProfile = null;
 let p2Name = null;
@@ -719,6 +722,7 @@ document.getElementById('p2GoBtn').addEventListener('click', async () => {
   try {
     const profile = await studentLoginSecondPlayer(email, password);
     p2Level = profile.level || 1;
+    p2Uid = profile.uid;
     p2IsAI = false; p2AIProfile = null; p2Name = profile.name;
     document.getElementById('p2LoginBox').innerHTML = `<p>${profile.name} — ${levelInfo(p2Level).label} ✔️</p>`;
     window.__breakBankCheckStart && window.__breakBankCheckStart();
@@ -742,12 +746,26 @@ function setP2Mode(mode){
 }
 document.getElementById('p2ModeHuman').addEventListener('click', () => setP2Mode('human'));
 document.getElementById('p2ModeAI').addEventListener('click', () => setP2Mode('ai'));
+// Break the Bank plays much faster/tighter than the other games (it's a
+// straight speed race with no downtime between attempts), so the shared
+// AI_PROFILES from ai-opponent.js feel far too tough here even on "easy".
+// Tune this game's own bot speed/accuracy down — new "hard" lands just a
+// touch below the shared module's "easy", and medium/easy scale down from
+// there — while still using the shared module's level/name/emoji per tier.
+const BANK_AI_TUNING = {
+  easy:   { accuracy: 0.55, minMs: 3600, maxMs: 6200 },
+  medium: { accuracy: 0.68, minMs: 2900, maxMs: 5200 },
+  hard:   { accuracy: 0.80, minMs: 2300, maxMs: 4300 },
+};
 document.querySelectorAll('.p2-diff-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.p2-diff-btn').forEach(b => b.classList.remove('sel'));
     btn.classList.add('sel');
     const bot = createAIOpponent(btn.dataset.diff);
-    p2Level = bot.level; p2IsAI = true; p2AIProfile = bot.profile; p2Name = bot.name;
+    const tuning = BANK_AI_TUNING[btn.dataset.diff] || BANK_AI_TUNING.medium;
+    p2Level = bot.level; p2IsAI = true;
+    p2AIProfile = { ...bot.profile, ...tuning };
+    p2Name = bot.name;
     document.getElementById('p2AIReadout').textContent = `${bot.name} — ${levelInfo(bot.level).label} ✔️`;
     window.__breakBankCheckStart && window.__breakBankCheckStart();
   });
@@ -913,6 +931,16 @@ document.querySelectorAll('.p2-diff-btn').forEach(btn => {
 
   function endGame(){
     const s1 = state.players[1].score, s2 = state.players[2].score;
+    if (!p2IsAI && p2Uid && s1 !== s2) {
+      const winner = s1 > s2 ? 1 : 2;
+      recordGameResult({
+        classId, gameId: "break-the-bank",
+        player1: { uid: p1Uid, name: p1Name },
+        player2: { uid: p2Uid, name: p2Name },
+        winnerUid: winner === 1 ? p1Uid : p2Uid,
+        winnerName: winner === 1 ? p1Name : p2Name
+      });
+    }
     el('final-score1').textContent = s1;
     el('final-score2').textContent = s2;
     let title, subtitle;

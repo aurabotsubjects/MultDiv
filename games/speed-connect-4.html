@@ -430,12 +430,15 @@
 import { levelInfo, generateQuestion } from "../js/levels.js";
 import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
 import { createAIOpponent, scheduleAIAnswer } from "../js/ai-opponent.js";
+import { recordGameResult } from "../js/results.js";
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
 const p1Uid = sessionStorage.getItem("ttr_uid");
+const p1Name = sessionStorage.getItem("ttr_name") || "Player 1";
 const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
 let p2Level = null;
+let p2Uid = null;
 let p2IsAI = false;
 let p2AIProfile = null;
 let p2Name = null;
@@ -456,6 +459,7 @@ document.getElementById('p2GoBtn').addEventListener('click', async () => {
   try {
     const profile = await studentLoginSecondPlayer(email, password);
     p2Level = profile.level || 1;
+    p2Uid = profile.uid;
     p2IsAI = false; p2AIProfile = null; p2Name = profile.name;
     document.getElementById('p2LoginBox').innerHTML = `<div class="picker-hint">${profile.name} — ${levelInfo(p2Level).label} ✔️</div>`;
     window.__sc4CheckStart && window.__sc4CheckStart();
@@ -934,6 +938,15 @@ document.querySelectorAll('.p2-diff-btn').forEach(btn => {
 
   function showMatchModal(idx){
     const name = idx===0 ? 'Player 1' : 'Player 2';
+    if (!p2IsAI && p2Uid) {
+      recordGameResult({
+        classId, gameId: "speed-connect-4",
+        player1: { uid: p1Uid, name: p1Name },
+        player2: { uid: p2Uid, name: p2Name },
+        winnerUid: idx === 0 ? p1Uid : p2Uid,
+        winnerName: idx === 0 ? p1Name : p2Name
+      });
+    }
     document.getElementById('match-modal-title').textContent = '🏆 ' + name + ' wins the Match!';
     document.getElementById('match-modal-sub').textContent = 'Final score — ' + state.players[0].roundWins + ' : ' + state.players[1].roundWins;
     document.getElementById('match-modal').classList.add('active');

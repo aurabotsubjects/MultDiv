@@ -67,6 +67,7 @@
 import { levelInfo, generateQuestion } from "../js/levels.js";
 import { renderPlayer2Login } from "../js/player2-login.js";
 import { scheduleAIAnswer } from "../js/ai-opponent.js";
+import { recordGameResult } from "../js/results.js";
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
@@ -230,6 +231,14 @@ function submitAnswer(value, correctAnswer, timedOut) {
 function finishGame(winnerKey) {
   updateScoreDisplay();
   const winner = players[winnerKey];
+  if (!players.a.isAI && !players.b.isAI) {
+    recordGameResult({
+      classId, gameId: "multiple-race",
+      player1: { uid: players.a.uid, name: players.a.name },
+      player2: { uid: players.b.uid, name: players.b.name },
+      winnerUid: winner.uid, winnerName: winner.name
+    });
+  }
   turnCard.innerHTML = `
     <div class="label">🏁 Race over!</div>
     <div class="big-name">${winner.name} wins!</div>

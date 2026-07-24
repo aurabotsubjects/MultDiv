@@ -576,6 +576,7 @@
         import { levelInfo, generateQuestion } from "../js/levels.js";
         import { getClassRoster, studentLoginSecondPlayer } from "../js/auth.js";
         import { createAIOpponent, scheduleAIAnswer } from "../js/ai-opponent.js";
+        import { recordGameResult } from "../js/results.js";
 
         const classId = sessionStorage.getItem("ttr_classId");
         if (!classId) window.location.href = "../index.html";
@@ -583,6 +584,7 @@
         const p1Name = sessionStorage.getItem("ttr_name");
         const p1Level = parseInt(sessionStorage.getItem("ttr_level") || "1", 10);
         let p2Level = null;
+        let p2Uid = null;
         let p2IsAI = false;
         let p2AIProfile = null;
 
@@ -602,6 +604,7 @@
             try {
                 const profile = await studentLoginSecondPlayer(email, password);
                 p2Level = profile.level || 1;
+                p2Uid = profile.uid;
                 p2IsAI = false; p2AIProfile = null;
                 document.getElementById('p2LoginBox').innerHTML =
                     `<div style="padding:10px 0; font-weight:bold;">${profile.name} — ${levelInfo(p2Level).label} ✔️</div>`;
@@ -1002,6 +1005,20 @@
 
             const title = document.getElementById('winner-title');
             const subtitle = document.getElementById('winner-subtitle');
+
+            if (!p2IsAI && p2Uid) {
+                let winnerUid = null, winnerName = null;
+                if (state.p1.score > state.p2.score) { winnerUid = p1Uid; winnerName = state.p1.name; }
+                else if (state.p2.score > state.p1.score) { winnerUid = p2Uid; winnerName = state.p2.name; }
+                if (winnerUid) {
+                    recordGameResult({
+                        classId, gameId: "math-bubble-pop",
+                        player1: { uid: p1Uid, name: state.p1.name },
+                        player2: { uid: p2Uid, name: state.p2.name },
+                        winnerUid, winnerName
+                    });
+                }
+            }
 
             if (state.p1.score > state.p2.score) {
                 title.textContent = `🎉 ${state.p1.name} Wins!`;

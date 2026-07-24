@@ -8,6 +8,10 @@
 //   classRosters/{classId}  { className, students: [{uid,name,email}] }  (public read, for login dropdown)
 //   notifications/{id}      { classId, studentId, studentName, level, score, total, status, createdAt }
 //   testResults/{id}        { classId, studentId, studentName, level, score, total, passed, createdAt }
+//   gameResults/{id}        { classId, gameId, gameName, weekId, player1:{uid,name},
+//                              player2:{uid,name}, winnerUid, winnerName, createdAt }
+//                            (see js/results.js — human-vs-human match results only,
+//                            used for the weekly leaderboard)
 // ============================================================
 import {
   db, collection, doc, getDoc, getDocs, setDoc, addDoc,

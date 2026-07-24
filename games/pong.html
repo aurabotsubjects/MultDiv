@@ -84,6 +84,7 @@
 import { levelInfo, generateQuestion } from "../js/levels.js";
 import { renderPlayer2Login } from "../js/player2-login.js";
 import { scheduleAIChoice } from "../js/ai-opponent.js";
+import { recordGameResult } from "../js/results.js";
 
 const classId = sessionStorage.getItem("ttr_classId");
 if (!classId) window.location.href = "../index.html";
@@ -406,6 +407,14 @@ function endMatch(winnerKey) {
   running = false;
   cancelAnimationFrame(rafId);
   if (aiChoiceCancel) { aiChoiceCancel(); aiChoiceCancel = null; }
+  if (!players.a.isAI && !players.b.isAI) {
+    recordGameResult({
+      classId, gameId: "pong",
+      player1: { uid: players.a.uid, name: players.a.name },
+      player2: { uid: players.b.uid, name: players.b.name },
+      winnerUid: players[winnerKey].uid, winnerName: players[winnerKey].name
+    });
+  }
   clearBalls();
   equationEl.textContent = "";
   ["a", "b"].forEach(k => { panelEls[k].classList.add("dim"); panelEls[k].innerHTML = `<div class="name-tag">${players[k].name}</div>`; });

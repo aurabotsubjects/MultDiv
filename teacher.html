@@ -48,6 +48,7 @@
             <div class="label">Class</div>
             <select id="classSelect"><option value="">Loading…</option></select>
           </div>
+          <a href="#" id="leaderboardLink" class="btn ghost" style="display:none; text-decoration:none; white-space:nowrap;">🏆 Weekly leaderboard</a>
         </div>
         <div class="row-inline" style="margin-top:12px;">
           <div><div class="label">New class name</div><input type="text" id="newClassName" placeholder="e.g. Room 12" /></div>
@@ -143,14 +144,22 @@ document.getElementById("addClassBtn").addEventListener("click", async () => {
   }
 });
 
+const leaderboardLink = document.getElementById("leaderboardLink");
+
 classSelect.addEventListener("change", async () => {
   currentClassId = classSelect.value;
   if (unsubscribeNotifs) unsubscribeNotifs();
-  if (!currentClassId) { notifCard.style.display = "none"; rosterCard.style.display = "none"; return; }
+  if (!currentClassId) {
+    notifCard.style.display = "none"; rosterCard.style.display = "none";
+    leaderboardLink.style.display = "none";
+    return;
+  }
   const cls = classes.find(c => c.id === currentClassId);
   document.getElementById("classCodeDisplay").textContent = cls?.classCode || "";
   notifCard.style.display = "block";
   rosterCard.style.display = "block";
+  leaderboardLink.style.display = "inline-block";
+  leaderboardLink.href = `leaderboard.html?classId=${encodeURIComponent(currentClassId)}`;
   await loadRoster();
   unsubscribeNotifs = listenPendingNotifications(currentClassId, renderNotifications);
 });
