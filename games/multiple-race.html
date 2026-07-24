@@ -221,8 +221,8 @@ function submitAnswer(value, correctAnswer, timedOut) {
   const isCorrect = !timedOut && value === correctAnswer;
   let squares = 0;
   if (isCorrect) {
-    if (elapsedSec < 1) squares = 1; else if (elapsedSec < 2) squares = 2;
-    else if (elapsedSec < 3) squares = 3; else if (elapsedSec < 4) squares = 4; else squares = 5;
+    if (elapsedSec < 1) squares = 5; else if (elapsedSec < 2) squares = 4;
+    else if (elapsedSec < 3) squares = 3; else if (elapsedSec < 4) squares = 2; else squares = 1;
   }
   players[currentKey].pos = Math.min(100, players[currentKey].pos + squares);
   placeToken(currentKey, players[currentKey].pos);
