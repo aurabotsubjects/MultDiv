@@ -26,7 +26,7 @@
   .paddle.a { left: 6px; background: var(--coral); color: var(--coral); }
   .paddle.b { right: 6px; background: var(--blue); color: var(--blue); }
 
-  .ball { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: #14181F; z-index: 3; }
+  .ball { position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 900; font-size: 1rem; color: #14181F; z-index: 3; will-change: transform; backface-visibility: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 
   .center-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; color: var(--gold); text-shadow: 0 2px 8px rgba(0,0,0,0.6); pointer-events: none; z-index: 7; }
   .center-msg .btn-row { pointer-events: auto; }
@@ -219,9 +219,15 @@ function createBallEls() {
 }
 
 function renderBallPositions() {
+  const rect = fieldWrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
   balls.forEach(b => {
-    b.el.style.left = b.x + "%";
-    b.el.style.top = b.y + "%";
+    // Snap to whole device pixels (not just whole CSS pixels) — animating at
+    // fractional pixel offsets forces the browser to anti-alias the ball's
+    // text every frame, which is what reads as "blurry" on a moving ball.
+    const px = Math.round((b.x / 100) * rect.width * dpr) / dpr;
+    const py = Math.round((b.y / 100) * rect.height * dpr) / dpr;
+    b.el.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%)`;
   });
 }
 
