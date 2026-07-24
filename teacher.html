@@ -20,7 +20,7 @@
   <div class="chrome-bar">
     <div class="brand"><span class="flag">🏁</span> Teacher Dashboard</div>
     <div style="display:flex; align-items:center; gap:14px;">
-      <a href="settings.html" class="btn ghost" style="padding:8px 14px; font-size:0.8rem; text-decoration:none;">⚙️ Settings</a>
+      <a href="settings.html" id="settingsBtn" class="btn ghost" style="display:none; padding:8px 14px; font-size:0.8rem; text-decoration:none;">⚙️ Settings</a>
       <div class="who" id="whoBar"></div>
     </div>
   </div>
@@ -85,13 +85,15 @@
 </div>
 
 <script type="module">
-import { teacherLogin, createClass, createStudentAccount, logout } from "./js/auth.js";
+import { auth, onAuthStateChanged } from "./js/firebase-init.js";
+import { teacherLogin, getMyProfile, createClass, createStudentAccount, logout } from "./js/auth.js";
 import { listClassesForTeacher, listStudents, setStudentLevel, listenPendingNotifications, resolveNotification } from "./js/db.js";
 import { levelInfo, nextLevel } from "./js/levels.js";
 
 const loginPanel = document.getElementById("loginPanel");
 const dashboard = document.getElementById("dashboard");
 const whoBar = document.getElementById("whoBar");
+const settingsBtn = document.getElementById("settingsBtn");
 const classSelect = document.getElementById("classSelect");
 const notifCard = document.getElementById("notifCard");
 const rosterCard = document.getElementById("rosterCard");
@@ -102,6 +104,16 @@ let classes = [];
 let currentClassId = null;
 let unsubscribeNotifs = null;
 
+async function showDashboardFor(profile) {
+  teacherId = profile.uid;
+  whoBar.innerHTML = `${profile.name} · <a href="#" id="logoutLink" style="text-decoration:underline;">Sign out</a>`;
+  document.getElementById("logoutLink").addEventListener("click", async (e) => { e.preventDefault(); await logout(); location.reload(); });
+  loginPanel.style.display = "none";
+  dashboard.style.display = "flex";
+  settingsBtn.style.display = "inline-block"; // only visible once signed in as a teacher
+  await loadClasses();
+}
+
 document.getElementById("loginBtn").addEventListener("click", async () => {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
@@ -109,17 +121,24 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
   errEl.style.display = "none";
   try {
     const profile = await teacherLogin(email, password);
-    teacherId = profile.uid;
-    whoBar.innerHTML = `${profile.name} · <a href="#" id="logoutLink" style="text-decoration:underline;">Sign out</a>`;
-    document.getElementById("logoutLink").addEventListener("click", async (e) => { e.preventDefault(); await logout(); location.reload(); });
-    loginPanel.style.display = "none";
-    dashboard.style.display = "flex";
-    await loadClasses();
+    await showDashboardFor(profile);
   } catch (err) {
     errEl.textContent = (err.message || "").includes("invalid-credential")
       ? "That email and password combination isn't recognized — if you haven't requested an account yet, use the button below."
       : (err.message || "Couldn't sign in.");
     errEl.style.display = "block";
+  }
+});
+
+// If a teacher is already signed in (e.g. came back to this tab, or arrived
+// here after using Settings), skip straight to the dashboard instead of
+// asking them to log in again — and keep the Settings button hidden until
+// we know that's the case.
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
+  const profile = await getMyProfile();
+  if (profile && profile.role === "teacher" && profile.status !== "pending" && profile.status !== "denied") {
+    await showDashboardFor(profile);
   }
 });
 
