@@ -83,10 +83,16 @@ export function scheduleAIAnswer(aiPlayerOrProfile, question, callback) {
   return () => clearTimeout(timer);
 }
 
-// For multiple-choice / tap-a-button games (e.g. Pong): picks one of the
-// options actually on screen after a simulated delay, instead of an
+// For multiple-choice games where the AI must pick one of several options
+// actually on screen after a simulated "thinking" delay, instead of an
 // arbitrary numeric offset. Guarantees a wrong pick is still one of the
 // real choices, never an off-list value.
+//
+// In Table Pong this doubles as ball-targeting logic: the three balls in a
+// wave are labelled with `options`, and the value this returns is which
+// ball the AI commits to chasing with its paddle for that wave (see
+// updateAIPaddles() in games/pong.html, which then steers toward whichever
+// ball currently holds that value using the AI's paddle-tracking skill).
 export function scheduleAIChoice(aiPlayerOrProfile, correctValue, options, callback) {
   const profile = aiPlayerOrProfile.profile || aiPlayerOrProfile;
   const delay = profile.minMs + Math.random() * (profile.maxMs - profile.minMs);
