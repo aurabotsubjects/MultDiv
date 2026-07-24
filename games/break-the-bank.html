@@ -35,14 +35,14 @@
     background: radial-gradient(ellipse at 50% -10%, #262c47 0%, var(--navy-2) 45%, var(--navy) 100%);
     font-family: 'Nunito', sans-serif;
     color: #f4f1e8;
-    overflow-x: hidden;
+    overflow: hidden;
     overscroll-behavior: none;
     touch-action: manipulation;
   }
 
   .display-font{ font-family: 'Fredoka', sans-serif; }
 
-  #app{ min-height: 100vh; width:100%; position: relative; }
+  #app{ height: 100dvh; width:100%; position: relative; display:flex; flex-direction:column; overflow:hidden; }
 
   /* Ambient vault-floor texture */
   body::before{
@@ -57,11 +57,13 @@
 
   .screen{
     display:none;
-    min-height: 100vh;
+    flex: 1;
+    min-height: 0;
     width: 100%;
     position: relative;
     z-index: 1;
     padding: 18px;
+    overflow-y: auto;
   }
   .screen.active{ display:flex; flex-direction: column; align-items: center; }
 
@@ -176,7 +178,10 @@
   .p2-diff-btn.sel{ background: var(--brass); color:#2a1b04; border-color:var(--brass-light); }
 
   /* ================= GAME SCREEN ================= */
-  #game-screen{ padding-top: 10px; }
+  #game-screen{ padding-top: 10px; overflow: hidden; flex-direction: column; flex-wrap: nowrap; }
+  #game-screen .top-row{ flex: 0 0 auto; }
+  #game-screen .scoreboard{ flex: 0 0 auto; }
+  #game-screen .banner{ flex: 0 0 auto; }
 
   .top-row{
     width: 100%; max-width: 1100px;
@@ -230,25 +235,33 @@
 
   .vault-floor{
     width: 100%; max-width: 1100px;
-    display:flex; gap: 20px; flex-wrap: wrap;
+    display:flex; gap: 20px;
     justify-content: center;
     margin-top: 6px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .safe-unit{
     flex: 1 1 400px; max-width: 480px;
     position: relative;
     display:flex; flex-direction: column; align-items: center;
-    gap: 12px;
+    justify-content: center;
+    gap: clamp(4px, 1.5vh, 12px);
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
   }
 
   /* ---------- Paper flip card ---------- */
   .paper-card{
     width: 78%;
     max-width: 300px;
-    height: 168px;
+    height: clamp(64px, 20vh, 168px);
     perspective: 1200px;
     cursor: pointer;
+    flex: 0 0 auto;
   }
   .paper-inner{
     position: relative;
@@ -316,15 +329,18 @@
   /* ---------- Safe ---------- */
   .safe{
     width: 100%;
+    max-width: 340px;
     position: relative;
     border-radius: 26px;
-    padding: 16px;
+    padding: clamp(8px, 2vh, 16px);
     background: linear-gradient(160deg, #dfe4ec, #9aa3b3 45%, #6b7386);
     box-shadow:
       0 18px 34px rgba(0,0,0,0.5),
       inset 0 2px 3px rgba(255,255,255,0.6),
       inset 0 -6px 10px rgba(0,0,0,0.3);
     transition: transform 0.12s;
+    flex: 0 1 auto;
+    min-height: 0;
   }
   .safe.shake{ animation: shake 0.4s; }
   @keyframes shake{
@@ -353,8 +369,8 @@
     background:
       radial-gradient(circle at 30% 25%, #f2f5fa, #c7ced9 40%, #838da0 78%, #59616f 100%);
     border: 4px solid #4b5164;
-    padding: 26px 16px 30px;
-    display:flex; flex-direction: column; align-items:center; gap: 18px;
+    padding: clamp(10px, 3vh, 26px) 16px clamp(12px, 3.5vh, 30px);
+    display:flex; flex-direction: column; align-items:center; gap: clamp(6px, 2vh, 18px);
     box-shadow: inset 0 0 0 6px rgba(255,255,255,0.15), inset 0 10px 18px rgba(255,255,255,0.35), inset 0 -14px 20px rgba(0,0,0,0.25);
     transition: transform 0.9s cubic-bezier(.6,0,.4,1), opacity 0.9s;
     transform-origin: left center;
@@ -379,7 +395,7 @@
     display:flex; align-items:center; gap: 10px;
   }
   .dial-outer{
-    width: 148px; height: 148px;
+    width: clamp(72px, min(20vh, 26vw), 148px); height: clamp(72px, min(20vh, 26vw), 148px);
     border-radius: 50%;
     background:
       repeating-conic-gradient(from 0deg, #b8802a 0deg 3deg, #d9a441 3deg 9deg);
@@ -400,7 +416,7 @@
     z-index: 2;
   }
   .dial-inner{
-    width: 100px; height: 100px; border-radius: 50%;
+    width: clamp(48px, min(13.5vh, 17.5vw), 100px); height: clamp(48px, min(13.5vh, 17.5vw), 100px); border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #6b5321, #3c2c0f 75%);
     box-shadow: inset 0 4px 8px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.15);
     position: relative;
@@ -513,9 +529,6 @@
   }
 
   @media (max-width: 640px){
-    .dial-outer{ width: 128px; height: 128px; }
-    .dial-inner{ width: 86px; height: 86px; }
-    .safe-unit{ flex-basis: 100%; }
     .table-grid{ grid-template-columns: repeat(4, 1fr); }
   }
 

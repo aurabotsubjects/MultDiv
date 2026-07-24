@@ -6,28 +6,32 @@
 <title>Multiple Race</title>
 <link rel="stylesheet" href="../css/style.css" />
 <style>
-  .race-shell { max-width: 900px; }
-  .track-wrap { background: #0B0E13; border-radius: 14px; padding: 12px; border: 1px solid var(--line); }
-  .track-grid { display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); gap: 3px; aspect-ratio: 1/1; }
-  .cell { position: relative; background: var(--track); border-radius: 5px; display: flex; align-items: flex-end; padding: 2px 4px; font-weight: 700; font-size: clamp(6px, 1.3vw, 10px); color: #B3A98D; }
+  html, body { height: 100%; overflow: hidden; }
+  .app-shell { height: 100dvh; overflow: hidden; }
+  .race-shell { max-width: 900px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 10px; gap: 10px; }
+  #setupPanel { flex: 1; min-height: 0; overflow-y: auto; }
+  #gameArea { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .track-wrap { background: #0B0E13; border-radius: 14px; padding: 12px; border: 1px solid var(--line); flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .track-grid { display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); gap: 3px; flex: 1; min-height: 0; }
+  .cell { position: relative; background: var(--track); border-radius: 5px; display: flex; align-items: flex-end; padding: 2px 4px; font-weight: 700; font-size: clamp(6px, 1.6vh, 10px); color: #B3A98D; }
   .cell.start { background: var(--teal); color: #0F1319; }
   .cell.finish { background: repeating-conic-gradient(#0B0E13 0% 25%, var(--track) 0% 50%) 50% / 10px 10px; color: #0F1319; }
   .token { position: absolute; top: -5px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #0F1319; border: 2px solid #0F1319; }
   .token.a { background: var(--coral); right: 3px; } .token.b { background: var(--blue); right: 23px; }
-  .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 10px; font-weight: 700; }
+  .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 10px; font-weight: 700; flex: 0 0 auto; }
   .status-bar .side { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
   .status-bar .side.dim { opacity: 0.45; }
   .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
   .dot.a { background: var(--coral); } .dot.b { background: var(--blue); }
-  .turn-card { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-  .big-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; }
-  .question-display { font-family: var(--font-display); font-size: 2.4rem; font-weight: 800; }
+  .turn-card { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; padding: 12px; }
+  .big-name { font-family: var(--font-display); font-size: 1.3rem; font-weight: 800; }
+  .question-display { font-family: var(--font-display); font-size: clamp(1.4rem, 4.5vh, 2.4rem); font-weight: 800; }
   .timer-track { width: 100%; height: 12px; background: #0F1319; border-radius: 999px; overflow: hidden; }
   .timer-fill { height: 100%; background: var(--teal); width: 100%; }
   .timer-fill.warn { background: var(--coral); }
   .numpad-display { width: 100%; max-width: 220px; font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; text-align: center; letter-spacing: 0.1em; background: #0F1319; border: 2px solid var(--line); border-radius: 10px; padding: 7px; min-height: 1.5em; }
   .numpad-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 100%; max-width: 320px; }
-  .numpad-key { padding: 9px 0; font-size: 1rem; border-radius: 8px; }
+  .numpad-key { padding: clamp(5px, 1.4vh, 9px) 0; font-size: 1rem; border-radius: 8px; }
   .numpad-key.span2 { grid-column: span 2; } .numpad-key.span3 { grid-column: span 3; }
   .result-banner { font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; }
   .result-banner.good { color: var(--teal); } .result-banner.bad { color: var(--coral); }
@@ -91,7 +95,7 @@ renderPlayer2Login(document.getElementById("p2Container"), classId, players.a.ui
 
 document.getElementById("startBtn").addEventListener("click", () => {
   document.getElementById("setupPanel").style.display = "none";
-  document.getElementById("gameArea").style.display = "block";
+  document.getElementById("gameArea").style.display = "flex";
   beginGame();
 });
 
