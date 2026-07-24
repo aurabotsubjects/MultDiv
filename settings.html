@@ -15,7 +15,13 @@
 
   .game-row { padding: 14px 0; border-bottom: 1px solid var(--line); }
   .game-row:last-child { border-bottom: none; }
-  .game-row-title { font-family: var(--font-display); font-weight: 800; margin-bottom: 10px; }
+  .game-row-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .game-row-title { font-family: var(--font-display); font-weight: 800; }
+  .reset-btn {
+    padding: 5px 12px; font-size: 0.72rem; border-radius: 8px; background: var(--line);
+    color: var(--track); font-family: var(--font-body); font-weight: 600; white-space: nowrap;
+  }
+  .reset-btn:hover { background: var(--asphalt-2); }
 
   .accuracy-line { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .accuracy-line input[type="range"] { flex: 1; accent-color: var(--gold); height: 6px; }
@@ -102,7 +108,10 @@ function renderGamesList() {
     const pct = Math.round(s.accuracy * 100);
     return `
       <div class="game-row" data-game="${g.id}">
-        <div class="game-row-title">${g.name}</div>
+        <div class="game-row-header">
+          <div class="game-row-title">${g.name}</div>
+          <button type="button" class="reset-btn" data-reset="${g.id}" title="Restore this game's factory-default accuracy and time range">Reset to default</button>
+        </div>
         <div class="accuracy-line">
           <span class="label" style="margin:0;">Accuracy</span>
           <input type="range" class="accuracy-slider" min="0" max="100" step="1" value="${pct}" />
@@ -128,6 +137,22 @@ function renderGamesList() {
       slider.parentElement.querySelector(".accuracy-value").textContent = slider.value + "%";
     });
   });
+
+  gamesList.querySelectorAll(".reset-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const gameId = btn.dataset.reset;
+      // "Reset to default" restores this game's hard-coded factory default
+      // (from js/ai-settings.js), not whatever's currently saved.
+      const def = DEFAULT_AI_SETTINGS[gameId];
+      const row = gamesList.querySelector(`.game-row[data-game="${gameId}"]`);
+      const pct = Math.round(def.accuracy * 100);
+      const slider = row.querySelector(".accuracy-slider");
+      slider.value = pct;
+      row.querySelector(".accuracy-value").textContent = pct + "%";
+      row.querySelector(".min-time").value = (def.minMs / 1000).toFixed(1);
+      row.querySelector(".max-time").value = (def.maxMs / 1000).toFixed(1);
+    });
+  });
 }
 
 document.getElementById("saveBtn").addEventListener("click", async () => {
@@ -140,12 +165,12 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
     if (maxSec < minSec) { const t = minSec; minSec = maxSec; maxSec = t; }
     updated[gameId] = { accuracy, minMs: Math.round(minSec * 1000), maxMs: Math.round(maxSec * 1000) };
   });
-  currentSettings = updated;
   const saveBtn = document.getElementById("saveBtn");
   saveBtn.disabled = true;
   saveBtn.textContent = "Saving…";
   try {
     await saveAISettings(updated);
+    currentSettings = updated;
     const note = document.getElementById("saveNote");
     note.classList.add("show");
     setTimeout(() => note.classList.remove("show"), 2000);
